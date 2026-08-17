@@ -30,6 +30,12 @@ Two devs, two Claude Code instances, one repo. This file is the shared memory be
 
 ## Log
 
+### 2026-08-17 (evening) · David + Claude (main)
+**Done:** Phase 0 David side — Flutter scaffold in [app/](app/), placeholder package id `com.findmyevent.findmyevent`. gen-l10n wired: EN+MK ARB files, `nullable-getter: false`, generated files gitignored (regenerate via `flutter pub get`/`run`). Deps: supabase_flutter, flutter_riverpod, flutter_map, latlong2, geolocator, shared_preferences. [app/lib/core/env.dart](app/lib/core/env.dart) reads `--dart-define` config (app boots without keys). Placeholder MapScreen + smoke test; `flutter analyze` + `flutter test` green.
+**Next:** sinanmarkic: two schema fixes found in review — (1) **RLS infinite recursion**: "curators read all profiles" policy ([initial_schema.sql:164](supabase/migrations/20260817120000_initial_schema.sql)) queries `profiles` inside a `profiles` policy → Postgres errors on profile reads once a curator exists; fix = `security definer` helper (e.g. `is_curator()`), same trick as `handle_new_user`. (2) `events` allows `place_id` AND `geog` both null → add `check (place_id is not null or geog is not null)`. Then Phase 1: viewport RPC + real map screen (David).
+**Blocked:** David needs Supabase URL + publishable key from sinanmarkic to run app against live backend (app runs without them for UI work).
+**Watch out:** supabase_flutter deprecated `anonKey` → code uses `publishableKey` and `SUPABASE_PUBLISHABLE_KEY` define (app/README.md has run command). `intl` must stay `^0.20.2` — flutter_localizations pins it. David's Flutter SDK: `C:\Users\david\flutter` (not on PATH).
+
 ### 2026-08-17 · sinanmarkic + Claude (main)
 **Done:** Created Supabase project `findmyevent` (ref `cojvcfyqgggcssjbbecz`, eu-west-1), linked via CLI. Pushed initial schema migration ([supabase/migrations/20260817120000_initial_schema.sql](supabase/migrations/20260817120000_initial_schema.sql)): regions/categories/profiles/places/sources/events/reviews per PLAN.md §3, PostGIS geography cols + GiST indexes, RLS policies (anon sees approved events/active places; organizers insert+read own; curators read/update all). Seeded Skopje region + taxonomy v1 categories ([supabase/seed.sql](supabase/seed.sql)); verified live via REST API.
 **Next:** David: Flutter scaffold + gen-l10n wiring (remaining Phase 0 piece). Whoever wires the app needs the project URL + anon/publishable key from Supabase dashboard (Settings → API) — not committed anywhere, ask sinanmarkic.

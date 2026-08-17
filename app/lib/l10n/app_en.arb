@@ -1,0 +1,10 @@
+{
+  "@@locale": "en",
+  "appTitle": "FindMyEvent",
+  "@appTitle": {
+    "description": "Working title — brand name, stays untranslated across locales (PLAN.md §5.7)"
+  },
+  "mapComingSoon": "Map coming in Phase 1",
+  "supabaseConnected": "Supabase: connected",
+  "supabaseNotConfigured": "Supabase: not configured — run with --dart-define (see app/README.md)"
+}

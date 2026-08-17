@@ -1,0 +1,7 @@
+{
+  "@@locale": "mk",
+  "appTitle": "FindMyEvent",
+  "mapComingSoon": "Мапата доаѓа во Фаза 1",
+  "supabaseConnected": "Supabase: поврзан",
+  "supabaseNotConfigured": "Supabase: не е конфигуриран — стартувај со --dart-define (види app/README.md)"
+}
