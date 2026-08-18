@@ -20,10 +20,9 @@ Two devs, two Claude Code instances, one repo. This file is the shared memory be
 **Watch out:** gotchas discovered (env quirks, API surprises), or "-"
 ```
 
-## Current ownership (Phase 0)
+## Current ownership (Phase 0 → 1 transition, updated 2026-08-18)
 
-- David: Flutter scaffold, map screen groundwork
-- Friend: Supabase project, schema migrations, seed data
+- David: Flutter app AND Supabase (took over backend — has account access; sinanmarkic to confirm split for Phase 1)
 - (Re-negotiate each phase; record changes here.)
 
 ---
