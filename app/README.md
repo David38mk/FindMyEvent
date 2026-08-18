@@ -4,13 +4,11 @@ Flutter app. See root [PLAN.md](../PLAN.md) for product plan, [HANDOFF.md](../HA
 
 ## Run
 
-Supabase keys are injected at build time and never committed. Get the project URL + publishable key from the Supabase dashboard (Settings → API) — ask sinanmarkic.
-
 ```sh
-flutter run \
-  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+flutter run --dart-define-from-file=dart_defines.json
 ```
+
+`dart_defines.json` holds the Supabase URL + **publishable** key. Both are public by design (they ship inside the app binary; RLS protects the data), so the file is committed. The **secret** key (`sb_secret_...`) must NEVER appear in this repo or in any client code — it bypasses RLS entirely.
 
 App boots without the defines too (map placeholder, no data) — fine for UI work.
 
