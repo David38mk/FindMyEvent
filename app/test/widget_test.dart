@@ -7,7 +7,10 @@ import 'package:findmyevent/main.dart';
 void main() {
   testWidgets('app boots to map placeholder', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: FindMyEventApp()));
-    await tester.pumpAndSettle();
+    // No pumpAndSettle: tile layer retries network fetches in tests and would
+    // never settle. Two frames are enough for the first build.
+    await tester.pump();
+    await tester.pump();
 
     expect(find.byType(MapScreen), findsOneWidget);
   });

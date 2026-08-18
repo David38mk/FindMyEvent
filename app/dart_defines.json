@@ -1,4 +1,5 @@
 {
   "SUPABASE_URL": "https://cojvcfyqgggcssjbbecz.supabase.co",
-  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_1FHkANUvzu8g9-5BR0_FlQ_0CrH4VxU"
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_1FHkANUvzu8g9-5BR0_FlQ_0CrH4VxU",
+  "MAPTILER_KEY": "zvPw73bvh1sxwe20UrpC"
 }

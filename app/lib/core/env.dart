@@ -7,4 +7,8 @@ abstract final class Env {
 
   static bool get hasSupabase =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+
+  static const maptilerKey = String.fromEnvironment('MAPTILER_KEY');
+
+  static bool get hasMapTiler => maptilerKey.isNotEmpty;
 }

@@ -6,5 +6,19 @@
   },
   "mapComingSoon": "Map coming in Phase 1",
   "supabaseConnected": "Supabase: connected",
-  "supabaseNotConfigured": "Supabase: not configured — run with --dart-define (see app/README.md)"
+  "supabaseNotConfigured": "Supabase: not configured — run with --dart-define (see app/README.md)",
+  "today": "Today",
+  "tomorrow": "Tomorrow",
+  "myLocation": "My location",
+  "pinsLoadError": "Couldn't load map data — check connection",
+  "catParty": "Party",
+  "catConcert": "Concert",
+  "catStandup": "Stand-up",
+  "catFestival": "Festival",
+  "catBar": "Bar",
+  "catCigarettes": "Cigarettes",
+  "catAlcohol": "Alcohol",
+  "catHookah": "Hookah",
+  "catBetting": "Betting",
+  "catNightshop": "Night shop"
 }

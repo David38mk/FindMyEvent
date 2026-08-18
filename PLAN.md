@@ -96,7 +96,7 @@ sources      id, name, url, trust ('trusted'|'unverified'), enabled
 3. ~~Age gating~~ — RESOLVED 2026-08-17: honest 18+ store content rating + one-time "I am 18+" dialog on first launch (local flag, works anonymous/offline). No real-money gambling features ever — betting shops shown as locations only.
 4. ~~Anonymous browsing~~ — RESOLVED 2026-08-17: yes, no login wall; account only to submit Events or leave Reviews.
 5. ~~Tile provider~~ — RESOLVED 2026-08-17: MapTiler free tier (Stadia = fallback if signup annoying).
-7. **App name**: deliberating (David sleeping on it) — needs catchy marketing name; "FindMyEvent" = working title only. Shortlist from 2026-08-17 session: **Merak** (recommended — Balkan word for enjoying life's pleasures, unique in stores, survives regional expansion), Izlez, Večerva, NiteMap. Verify domain + store collisions before final. NOT blocking Phase 0: scaffold with placeholder package id; package id only frozen at first store upload (end of Phase 1).
+7. **App name**: deliberating (David sleeping on it) — needs catchy marketing name; "FindMyEvent" = working title only. Shortlist: **Merak** (Balkan word for enjoying life's pleasures, warm/timeless), **Vajb** (Balkan spelling of "vibe" — David's direction 2026-08-18; young/nightlife-coded, zero store collisions), NightVibe, Izlez. Rejected: naked "Vibe" (crowded + VIBE trademark), VibeMap (existing competitor app). Verify domain + store collisions before final. NOT blocking Phase 0: scaffold with placeholder package id; package id only frozen at first store upload (end of Phase 1).
 6. ~~Pin color conflict~~ — RESOLVED 2026-08-17: pin body = Category color/icon, ring = Time Scope, plus on-map legend explaining both (see Filter behavior).
 
 ## 6. Two-dev + two-Claude workflow

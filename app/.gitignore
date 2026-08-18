@@ -1,4 +1,5 @@
 # Miscellaneous
+android/build/
 *.class
 *.log
 *.pyc
