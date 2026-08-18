@@ -29,6 +29,12 @@ Two devs, two Claude Code instances, one repo. This file is the shared memory be
 
 ## Log
 
+### 2026-08-18 · David + Claude (main)
+**Done:** David linked his machine to the Supabase project (shared membership) and deployed [20260818090000_fix_rls_recursion_and_event_location.sql](supabase/migrations/20260818090000_fix_rls_recursion_and_event_location.sql) — both schema issues from the 08-17 review are fixed live; `migration list` shows local/remote in sync.
+**Next:** Phase 1 — viewport RPC (`events_in_viewport` SQL function, new migration) + real map screen in app/. David + Claude picking this up.
+**Blocked:** -
+**Watch out:** Both machines can now `db push` — coordinate via this log before pushing migrations to avoid racing each other. Migration files stay append-only.
+
 ### 2026-08-17 (evening) · David + Claude (main)
 **Done:** Phase 0 David side — Flutter scaffold in [app/](app/), placeholder package id `com.findmyevent.findmyevent`. gen-l10n wired: EN+MK ARB files, `nullable-getter: false`, generated files gitignored (regenerate via `flutter pub get`/`run`). Deps: supabase_flutter, flutter_riverpod, flutter_map, latlong2, geolocator, shared_preferences. [app/lib/core/env.dart](app/lib/core/env.dart) reads `--dart-define` config (app boots without keys). Placeholder MapScreen + smoke test; `flutter analyze` + `flutter test` green.
 **Next:** sinanmarkic: two schema fixes found in review — (1) **RLS infinite recursion**: "curators read all profiles" policy ([initial_schema.sql:164](supabase/migrations/20260817120000_initial_schema.sql)) queries `profiles` inside a `profiles` policy → Postgres errors on profile reads once a curator exists; fix = `security definer` helper (e.g. `is_curator()`), same trick as `handle_new_user`. (2) `events` allows `place_id` AND `geog` both null → add `check (place_id is not null or geog is not null)`. Then Phase 1: viewport RPC + real map screen (David).
