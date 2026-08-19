@@ -13,6 +13,7 @@ class MapPin {
     required this.lng,
     required this.kind,
     this.subtitle,
+    this.description,
     this.startsAt,
   });
 
@@ -26,6 +27,10 @@ class MapPin {
 
   /// Place name for events, address for places.
   final String? subtitle;
+
+  /// Free-text description. Events only for now — places have no
+  /// description column in the schema yet (PLAN.md §3).
+  final String? description;
   final DateTime? startsAt;
 
   factory MapPin.event(Map<String, dynamic> row) => MapPin(
@@ -37,6 +42,7 @@ class MapPin {
         lng: (row['lng'] as num).toDouble(),
         kind: PinKind.event,
         subtitle: row['place_name'] as String?,
+        description: row['description'] as String?,
         startsAt: DateTime.tryParse(row['starts_at'] as String? ?? '')?.toLocal(),
       );
 

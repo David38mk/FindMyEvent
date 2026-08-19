@@ -44,6 +44,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _mapController.move(LatLng(position.latitude, position.longitude), 15);
   }
 
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -54,6 +55,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         .where((p) =>
             selectedCats.isEmpty || selectedCats.contains(p.categorySlug))
         .toList();
+
+    // Guard: pins are always empty before onMapReady fires (mapBoundsProvider
+    // is null until then), so this never touches .camera before FlutterMap
+    // has rendered at least once — accessing it earlier throws.
+    final clusters =
+        pins.isEmpty ? const <_PinCluster>[] : _clusterPins(pins, _mapController.camera);
 
     return Scaffold(
       body: Stack(
@@ -79,24 +86,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               MarkerLayer(
                 markers: [
-                  for (final pin in pins)
+                  for (final cluster in clusters)
                     Marker(
-                      point: LatLng(pin.lat, pin.lng),
-                      width: 40,
-                      height: 40,
-                      child: GestureDetector(
-                        onTap: () => _showPinSheet(pin),
-                        child: Icon(
-                          pin.kind == PinKind.event
-                              ? Icons.location_on
-                              : Icons.storefront,
-                          color: pin.color,
-                          size: 36,
-                          shadows: const [
-                            Shadow(blurRadius: 4, color: Colors.black45),
-                          ],
-                        ),
-                      ),
+                      point: cluster.center,
+                      width: cluster.pins.length > 1 ? 48 : 40,
+                      height: cluster.pins.length > 1 ? 48 : 40,
+                      child: cluster.pins.length == 1
+                          ? _PinMarker(
+                              pin: cluster.pins.single,
+                              onTap: () => _showPinSheet(cluster.pins.single),
+                            )
+                          : _ClusterMarker(
+                              cluster: cluster,
+                              onTap: () => _showClusterSheet(cluster),
+                            ),
                     ),
                 ],
               ),
@@ -168,7 +171,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   .add_Hm()
                   .format(pin.startsAt!)),
             ],
+            if (pin.description != null && pin.description!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(pin.description!),
+            ],
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showClusterSheet(_PinCluster cluster) {
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final pin in cluster.pins)
+              ListTile(
+                leading: Icon(
+                  pin.kind == PinKind.event ? Icons.location_on : Icons.storefront,
+                  color: pin.color,
+                ),
+                title: Text(pin.title),
+                subtitle: Text([
+                  categoryLabel(l10n, pin.categorySlug),
+                  if (pin.subtitle != null) pin.subtitle!,
+                ].join(' · ')),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showPinSheet(pin);
+                },
+              ),
           ],
         ),
       ),
@@ -256,6 +293,118 @@ class _CategoryChips extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _PinMarker extends StatelessWidget {
+  const _PinMarker({required this.pin, required this.onTap});
+
+  final MapPin pin;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Tooltip(
+        // Shown on mouse hover (web/desktop) and long-press (touch); tap
+        // always opens the full detail sheet regardless of platform.
+        message: _tooltipText(pin),
+        child: Icon(
+          pin.kind == PinKind.event ? Icons.location_on : Icons.storefront,
+          color: pin.color,
+          size: 36,
+          shadows: const [Shadow(blurRadius: 4, color: Colors.black45)],
+        ),
+      ),
+    );
+  }
+
+  static String _tooltipText(MapPin pin) {
+    final description = pin.description;
+    if (description == null || description.isEmpty) return pin.title;
+    const maxLen = 80;
+    final snippet =
+        description.length > maxLen ? '${description.substring(0, maxLen)}…' : description;
+    return '${pin.title}\n$snippet';
+  }
+}
+
+class _ClusterMarker extends StatelessWidget {
+  const _ClusterMarker({required this.cluster, required this.onTap});
+
+  final _PinCluster cluster;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Tooltip(
+        // Hover (web/desktop) previews what's inside; tap (all platforms,
+        // including mobile where hover doesn't exist) opens the full list.
+        message: cluster.pins.map((p) => p.title).join(', '),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black45)],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '${cluster.pins.length}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A group of pins collapsed into one marker because they're within
+/// [_clusterPins]'s pixel radius of each other at the current zoom.
+class _PinCluster {
+  _PinCluster(this.pins) : center = _centroid(pins);
+
+  final List<MapPin> pins;
+  final LatLng center;
+
+  static LatLng _centroid(List<MapPin> pins) {
+    final lat = pins.map((p) => p.lat).reduce((a, b) => a + b) / pins.length;
+    final lng = pins.map((p) => p.lng).reduce((a, b) => a + b) / pins.length;
+    return LatLng(lat, lng);
+  }
+}
+
+/// Greedy pixel-distance clustering: pins within [radius] screen pixels of
+/// each other (at the map's current zoom/rotation) collapse into one marker.
+/// O(n²) — fine for a single city's viewport (dozens to low hundreds of
+/// pins); revisit if a Region ever needs more than that on screen at once.
+List<_PinCluster> _clusterPins(
+  List<MapPin> pins,
+  MapCamera camera, {
+  double radius = 44,
+}) {
+  final remaining = [...pins];
+  final clusters = <_PinCluster>[];
+  while (remaining.isNotEmpty) {
+    final seed = remaining.removeAt(0);
+    final seedPoint = camera.latLngToScreenOffset(LatLng(seed.lat, seed.lng));
+    final group = [seed];
+    remaining.removeWhere((pin) {
+      final point = camera.latLngToScreenOffset(LatLng(pin.lat, pin.lng));
+      if ((point - seedPoint).distance <= radius) {
+        group.add(pin);
+        return true;
+      }
+      return false;
+    });
+    clusters.add(_PinCluster(group));
+  }
+  return clusters;
 }
 
 /// Slug → localized label. Slugs are stable DB identifiers; labels are UI.
