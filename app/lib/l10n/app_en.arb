@@ -20,5 +20,10 @@
   "catAlcohol": "Alcohol",
   "catHookah": "Hookah",
   "catBetting": "Betting",
-  "catNightshop": "Night shop"
+  "catNightshop": "Night shop",
+  "ageGateTitle": "You must be 18 or older",
+  "ageGateBody": "FindMyEvent shows nightlife venues and legal-vice places (bars, alcohol, cigarettes, hookah, betting) alongside events. Confirm you're 18 or older to continue.",
+  "ageGateConfirm": "I am 18 or older",
+  "ageGateDecline": "I am under 18",
+  "ageGateDeclinedMessage": "You must be 18 or older to use FindMyEvent."
 }
