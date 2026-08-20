@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/env.dart';
 import '../../core/models.dart';
 import '../../l10n/app_localizations.dart';
+import 'cached_tile_provider.dart';
 import 'map_providers.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -83,6 +84,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               TileLayer(
                 urlTemplate: _tileUrl,
                 userAgentPackageName: 'com.findmyevent.findmyevent',
+                tileProvider: CachedTileProvider(),
               ),
               MarkerLayer(
                 markers: [
