@@ -72,6 +72,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             options: MapOptions(
               initialCenter: _skopje,
               initialZoom: 14,
+              // Explicit: mouse wheel must zoom (desktop/web testing), all
+              // touch gestures on. Note: inside the Android emulator the host
+              // wheel is translated to a touch fling before the app sees it —
+              // that's emulator behavior, not ours (Ctrl+drag = pinch there).
+              interactionOptions:
+                  const InteractionOptions(flags: InteractiveFlag.all),
               onMapReady: _updateBounds,
               onMapEvent: (event) {
                 if (event is MapEventMoveEnd ||
@@ -92,8 +98,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   for (final cluster in clusters)
                     Marker(
                       point: cluster.center,
-                      width: cluster.pins.length > 1 ? 48 : 40,
-                      height: cluster.pins.length > 1 ? 48 : 40,
+                      width: cluster.pins.length > 1 ? 48 : 44,
+                      height: cluster.pins.length > 1 ? 48 : 44,
+                      // Single pins anchor their TIP at the coordinate
+                      // (topCenter = widget sits above the point); cluster
+                      // bubbles stay centered — they mark an area, not a spot.
+                      alignment: cluster.pins.length == 1
+                          ? Alignment.topCenter
+                          : Alignment.center,
                       child: cluster.pins.length == 1
                           ? _PinMarker(
                               pin: cluster.pins.single,
@@ -331,38 +343,46 @@ class _PinMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scope = pin.timeScope;
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(
         // Shown on mouse hover (web/desktop) and long-press (touch); tap
         // always opens the full detail sheet regardless of platform.
         message: _tooltipText(pin),
-        child: _ringed(
-          pin.timeScope,
-          Icon(
-            pin.kind == PinKind.event ? Icons.location_on : Icons.storefront,
-            color: pin.color,
-            size: pin.timeScope == null ? 36 : 26,
-            shadows: const [Shadow(blurRadius: 4, color: Colors.black45)],
-          ),
+        // Classic pin, tip on the exact coordinate (marker anchors topCenter).
+        // Decided visuals (PLAN.md): body color = Category; head dot = Time
+        // Scope for events, storefront glyph for places (no Time Scope).
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Icon(
+              Icons.location_pin,
+              color: pin.color,
+              size: 44,
+              shadows: const [Shadow(blurRadius: 4, color: Colors.black54)],
+            ),
+            Positioned(
+              top: 8,
+              child: Container(
+                width: 16,
+                height: 16,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color:
+                      scope != null ? timeScopeColor(scope) : Colors.white,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: scope == null
+                    ? const Icon(Icons.storefront,
+                        size: 10, color: Colors.black87)
+                    : null,
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  /// Decided pin visuals (PLAN.md): body color = Category, ring = Time Scope.
-  /// Places have no Time Scope → no ring, plain icon.
-  static Widget _ringed(TimeScope? scope, Widget icon) {
-    if (scope == null) return icon;
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white70,
-        border: Border.all(color: timeScopeColor(scope), width: 3),
-        boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black45)],
-      ),
-      alignment: Alignment.center,
-      child: icon,
     );
   }
 
@@ -512,13 +532,13 @@ class _MapLegendState extends ConsumerState<_MapLegend> {
               ),
               const SizedBox(height: 8),
               _legendRow(
-                  const Icon(Icons.location_on, size: 18), l10n.legendEvent),
+                  const Icon(Icons.location_pin, size: 18), l10n.legendEvent),
               _legendRow(
-                  const Icon(Icons.storefront, size: 18), l10n.legendPlace),
+                  const Icon(Icons.storefront, size: 16), l10n.legendPlace),
               const Divider(),
-              _legendRow(_ring(TimeScope.daily), l10n.legendDaily),
-              _legendRow(_ring(TimeScope.multiDay), l10n.legendMultiDay),
-              _legendRow(_ring(TimeScope.ongoing), l10n.legendOngoing),
+              _legendRow(_dot(TimeScope.daily), l10n.legendDaily),
+              _legendRow(_dot(TimeScope.multiDay), l10n.legendMultiDay),
+              _legendRow(_dot(TimeScope.ongoing), l10n.legendOngoing),
               if (categories.isNotEmpty) ...[
                 const Divider(),
                 for (final cat in categories)
@@ -534,12 +554,13 @@ class _MapLegendState extends ConsumerState<_MapLegend> {
     );
   }
 
-  static Widget _ring(TimeScope scope) => Container(
-        width: 16,
-        height: 16,
+  /// Matches the event pin's head dot.
+  static Widget _dot(TimeScope scope) => Container(
+        width: 14,
+        height: 14,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: timeScopeColor(scope), width: 3),
+          color: timeScopeColor(scope),
         ),
       );
 
