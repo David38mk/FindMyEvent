@@ -31,5 +31,6 @@
   "legendPlace": "Place",
   "legendDaily": "One-day event",
   "legendMultiDay": "Multi-day event",
-  "legendOngoing": "Season / ongoing"
+  "legendOngoing": "Season / ongoing",
+  "directions": "Directions"
 }

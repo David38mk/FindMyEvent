@@ -28,5 +28,6 @@
   "legendPlace": "Место",
   "legendDaily": "Еднодневен настан",
   "legendMultiDay": "Повеќедневен настан",
-  "legendOngoing": "Сезона / во тек"
+  "legendOngoing": "Сезона / во тек",
+  "directions": "Насоки"
 }

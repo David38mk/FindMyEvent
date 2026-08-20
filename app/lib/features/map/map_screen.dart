@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/env.dart';
 import '../../core/models.dart';
@@ -187,6 +188,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               Text(pin.description!),
             ],
             const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.directions),
+                label: Text(l10n.directions),
+                // Universal maps URL: Android/iOS hand it to the installed
+                // maps app; falls back to browser everywhere else.
+                onPressed: () => launchUrl(
+                  Uri.parse(
+                    'https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}',
+                  ),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
