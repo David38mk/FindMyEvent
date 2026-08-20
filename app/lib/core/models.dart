@@ -2,6 +2,10 @@ import 'dart:ui';
 
 enum PinKind { event, place }
 
+/// How long an Event runs — the Time Scope from CONTEXT.md. Drives the pin
+/// ring color (pin body = Category, ring = Time Scope; PLAN.md pin visuals).
+enum TimeScope { daily, multiDay, ongoing }
+
 /// One pin on the map — an Event or a Place, flattened from the viewport RPCs.
 class MapPin {
   const MapPin({
@@ -15,6 +19,7 @@ class MapPin {
     this.subtitle,
     this.description,
     this.startsAt,
+    this.endsAt,
   });
 
   final String id;
@@ -32,6 +37,21 @@ class MapPin {
   /// description column in the schema yet (PLAN.md §3).
   final String? description;
   final DateTime? startsAt;
+  final DateTime? endsAt;
+
+  /// Places have no Time Scope; events classify by how long they run.
+  /// Thresholds: ≤36h = one-day (covers past-midnight parties), ≤32d = multi-day
+  /// (festival week, monthly program), longer = ongoing/season.
+  TimeScope? get timeScope {
+    final start = startsAt;
+    if (kind != PinKind.event || start == null) return null;
+    final end = endsAt;
+    if (end == null) return TimeScope.daily;
+    final duration = end.difference(start);
+    if (duration <= const Duration(hours: 36)) return TimeScope.daily;
+    if (duration <= const Duration(days: 32)) return TimeScope.multiDay;
+    return TimeScope.ongoing;
+  }
 
   factory MapPin.event(Map<String, dynamic> row) => MapPin(
         id: row['id'] as String,
@@ -44,6 +64,7 @@ class MapPin {
         subtitle: row['place_name'] as String?,
         description: row['description'] as String?,
         startsAt: DateTime.tryParse(row['starts_at'] as String? ?? '')?.toLocal(),
+        endsAt: DateTime.tryParse(row['ends_at'] as String? ?? '')?.toLocal(),
       );
 
   factory MapPin.place(Map<String, dynamic> row) => MapPin(

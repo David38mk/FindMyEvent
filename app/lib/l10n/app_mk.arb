@@ -22,5 +22,11 @@
   "ageGateBody": "FindMyEvent прикажува ноќни локали и места со легални пороци (барови, алкохол, цигари, наргиле, обложување) заедно со настани. Потврди дека имаш 18 или повеќе години за да продолжиш.",
   "ageGateConfirm": "Имам 18 или повеќе години",
   "ageGateDecline": "Немам 18 години",
-  "ageGateDeclinedMessage": "Мора да имаш 18 или повеќе години за да ја користиш FindMyEvent."
+  "ageGateDeclinedMessage": "Мора да имаш 18 или повеќе години за да ја користиш FindMyEvent.",
+  "legendTooltip": "Легенда",
+  "legendEvent": "Настан",
+  "legendPlace": "Место",
+  "legendDaily": "Еднодневен настан",
+  "legendMultiDay": "Повеќедневен настан",
+  "legendOngoing": "Сезона / во тек"
 }

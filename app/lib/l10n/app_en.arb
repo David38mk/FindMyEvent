@@ -25,5 +25,11 @@
   "ageGateBody": "FindMyEvent shows nightlife venues and legal-vice places (bars, alcohol, cigarettes, hookah, betting) alongside events. Confirm you're 18 or older to continue.",
   "ageGateConfirm": "I am 18 or older",
   "ageGateDecline": "I am under 18",
-  "ageGateDeclinedMessage": "You must be 18 or older to use FindMyEvent."
+  "ageGateDeclinedMessage": "You must be 18 or older to use FindMyEvent.",
+  "legendTooltip": "Legend",
+  "legendEvent": "Event",
+  "legendPlace": "Place",
+  "legendDaily": "One-day event",
+  "legendMultiDay": "Multi-day event",
+  "legendOngoing": "Season / ongoing"
 }

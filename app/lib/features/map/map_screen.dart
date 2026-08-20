@@ -129,6 +129,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ],
             ),
           ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 0, 28),
+                child: _MapLegend(l10n: l10n),
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -309,13 +318,32 @@ class _PinMarker extends StatelessWidget {
         // Shown on mouse hover (web/desktop) and long-press (touch); tap
         // always opens the full detail sheet regardless of platform.
         message: _tooltipText(pin),
-        child: Icon(
-          pin.kind == PinKind.event ? Icons.location_on : Icons.storefront,
-          color: pin.color,
-          size: 36,
-          shadows: const [Shadow(blurRadius: 4, color: Colors.black45)],
+        child: _ringed(
+          pin.timeScope,
+          Icon(
+            pin.kind == PinKind.event ? Icons.location_on : Icons.storefront,
+            color: pin.color,
+            size: pin.timeScope == null ? 36 : 26,
+            shadows: const [Shadow(blurRadius: 4, color: Colors.black45)],
+          ),
         ),
       ),
+    );
+  }
+
+  /// Decided pin visuals (PLAN.md): body color = Category, ring = Time Scope.
+  /// Places have no Time Scope → no ring, plain icon.
+  static Widget _ringed(TimeScope? scope, Widget icon) {
+    if (scope == null) return icon;
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white70,
+        border: Border.all(color: timeScopeColor(scope), width: 3),
+        boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black45)],
+      ),
+      alignment: Alignment.center,
+      child: icon,
     );
   }
 
@@ -405,6 +433,110 @@ List<_PinCluster> _clusterPins(
     clusters.add(_PinCluster(group));
   }
   return clusters;
+}
+
+/// Ring colors for Time Scopes. Deliberately NOT category colors (those live
+/// in the DB): red = tonight-energy, blue = spans days, green = season-long.
+Color timeScopeColor(TimeScope scope) => switch (scope) {
+      TimeScope.daily => const Color(0xFFFF1744),
+      TimeScope.multiDay => const Color(0xFF00B0FF),
+      TimeScope.ongoing => const Color(0xFF00C853),
+    };
+
+/// Collapsible legend (decided in planning: legend ships with pin visuals).
+/// Collapsed to a single button by default — map real estate is the product.
+class _MapLegend extends ConsumerStatefulWidget {
+  const _MapLegend({required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  ConsumerState<_MapLegend> createState() => _MapLegendState();
+}
+
+class _MapLegendState extends ConsumerState<_MapLegend> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    if (!_expanded) {
+      return Card(
+        child: IconButton(
+          tooltip: l10n.legendTooltip,
+          icon: const Icon(Icons.layers_outlined),
+          onPressed: () => setState(() => _expanded = true),
+        ),
+      );
+    }
+
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
+    return Card(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 240, maxHeight: 320),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(l10n.legendTooltip,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  InkWell(
+                    onTap: () => setState(() => _expanded = false),
+                    child: const Icon(Icons.close, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _legendRow(
+                  const Icon(Icons.location_on, size: 18), l10n.legendEvent),
+              _legendRow(
+                  const Icon(Icons.storefront, size: 18), l10n.legendPlace),
+              const Divider(),
+              _legendRow(_ring(TimeScope.daily), l10n.legendDaily),
+              _legendRow(_ring(TimeScope.multiDay), l10n.legendMultiDay),
+              _legendRow(_ring(TimeScope.ongoing), l10n.legendOngoing),
+              if (categories.isNotEmpty) ...[
+                const Divider(),
+                for (final cat in categories)
+                  _legendRow(
+                    Icon(Icons.circle, color: cat.color, size: 14),
+                    categoryLabel(l10n, cat.slug),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _ring(TimeScope scope) => Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: timeScopeColor(scope), width: 3),
+        ),
+      );
+
+  Widget _legendRow(Widget marker, String label) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            SizedBox(width: 22, child: Center(child: marker)),
+            const SizedBox(width: 8),
+            Expanded(
+              child:
+                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
+        ),
+      );
 }
 
 /// Slug → localized label. Slugs are stable DB identifiers; labels are UI.
