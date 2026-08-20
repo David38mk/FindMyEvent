@@ -33,6 +33,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _mapController.camera.visibleBounds;
   }
 
+  void _zoomBy(double delta) {
+    final camera = _mapController.camera;
+    _mapController.move(camera.center, camera.zoom + delta);
+    // Programmatic moves fire no MapEventMoveEnd — refresh pins ourselves.
+    _updateBounds();
+  }
+
   Future<void> _goToMyLocation() async {
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -155,10 +162,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: l10n.myLocation,
-        onPressed: _goToMyLocation,
-        child: const Icon(Icons.my_location),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'zoomIn',
+            tooltip: l10n.zoomIn,
+            onPressed: () => _zoomBy(1),
+            child: const Icon(Icons.add),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.small(
+            heroTag: 'zoomOut',
+            tooltip: l10n.zoomOut,
+            onPressed: () => _zoomBy(-1),
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'myLocation',
+            tooltip: l10n.myLocation,
+            onPressed: _goToMyLocation,
+            child: const Icon(Icons.my_location),
+          ),
+        ],
       ),
     );
   }

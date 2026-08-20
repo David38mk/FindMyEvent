@@ -29,5 +29,7 @@
   "legendDaily": "Еднодневен настан",
   "legendMultiDay": "Повеќедневен настан",
   "legendOngoing": "Сезона / во тек",
-  "directions": "Насоки"
+  "directions": "Насоки",
+  "zoomIn": "Зголеми",
+  "zoomOut": "Намали"
 }
