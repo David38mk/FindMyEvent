@@ -46,13 +46,24 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 - Via `google_fonts` package for now (runtime fetch + cache); **bundle the TTFs as assets before store launch** so first offline run is correct.
 - Logo/wordmark font = separate branding decision, tied to the name choice.
 
-## Palette (decided 2026-08-21)
+## Palette v2 (decided 2026-08-21, David's refinement — supersedes v1)
 
-- Brand seed: **#FFB300 amber** → Material 3 `ColorScheme.fromSeed`, both brightnesses; `ThemeMode.system`.
-- Dark: warm near-black `#1A1815` bg, `#262320` cards. Light: warm off-white `#FAF8F5`, white cards.
-- Event category hues (the only loud colors on the map): party `#E84D8A`, concert `#6C63FF`, standup `#00B8A9`, festival `#3FA34D`.
-- Places: all `#5B6472` slate, white category glyph.
-- DB `categories.color` updated by migration — colors stay DB-owned.
+App-side tokens live in `app/lib/core/palette.dart` (AppPalette); category colors stay DB-owned.
+
+| Token | Hex | Usage |
+|---|---|---|
+| Electric Amber (brand seed) | `#FFB000` | CTAs, FABs, selected states, badges, Happening Now |
+| Amber Light | `#FFD166` | highlights, secondary emphasis (scheme.secondary) |
+| Midnight | `#121212` | dark background |
+| Elevated Surface | `#1C1B1A` | dark cards, sheets |
+| Raised Surface | `#292725` | dark inputs, active containers |
+| Warm Light BG | `#FAF9F6` | light background |
+| Pure White | `#FFFFFF` | light cards |
+| Danger | `#FF5C5C` | errors, urgent states (scheme.error) |
+| Text 1 dark / 2 dark | `#F5F3EF` / `#AAA6A0` | dark-mode text |
+| Text 1 light / 2 light | `#1C1917` / `#6B6560` | light-mode text |
+
+Category hues (DB, migration `20260821180000`): party `#FF4D8D`, concert `#7C5CFC`, standup `#12C7B3`, festival `#4DBA63`, places `#64748B` slate.
 
 ## Date & night UX (decided 2026-08-21, research-driven — see ADR 0004)
 

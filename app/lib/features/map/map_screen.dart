@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/env.dart';
 import '../../core/models.dart';
+import '../../core/palette.dart';
 import '../../core/theme_provider.dart';
 import '../../l10n/app_localizations.dart';
 import 'cached_tile_provider.dart';
@@ -668,7 +669,7 @@ class _PinMarker extends StatelessWidget {
                       height: live ? 14 : 10,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: live ? const Color(0xFFFFB300) : Colors.white,
+                        color: live ? AppPalette.brand : Colors.white,
                         border: live
                             ? Border.all(color: Colors.white, width: 2)
                             : null,

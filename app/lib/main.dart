@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/age_gate_prefs.dart';
 import 'core/env.dart';
+import 'core/palette.dart';
 import 'core/theme_provider.dart';
 import 'features/age_gate/age_gate_screen.dart';
 import 'features/map/map_screen.dart';
@@ -42,16 +43,30 @@ class FindMyEventApp extends ConsumerWidget {
 
   static ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
+    var scheme = ColorScheme.fromSeed(
+      seedColor: AppPalette.brand,
+      brightness: brightness,
+    ).copyWith(
+      secondary: AppPalette.amberLight,
+      error: AppPalette.danger,
+      onSurface:
+          dark ? AppPalette.textPrimaryDark : AppPalette.textPrimaryLight,
+      onSurfaceVariant:
+          dark ? AppPalette.textSecondaryDark : AppPalette.textSecondaryLight,
+    );
+    if (dark) {
+      scheme = scheme.copyWith(
+        surface: AppPalette.elevatedSurface,
+        surfaceContainerHighest: AppPalette.raisedSurface,
+      );
+    }
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFFFB300),
-        brightness: brightness,
-      ),
+      colorScheme: scheme,
       scaffoldBackgroundColor:
-          dark ? const Color(0xFF1A1815) : const Color(0xFFFAF8F5),
+          dark ? AppPalette.midnightBg : AppPalette.warmLightBg,
       cardTheme: CardThemeData(
-        color: dark ? const Color(0xFF262320) : Colors.white,
+        color: dark ? AppPalette.elevatedSurface : Colors.white,
       ),
     );
     // Manrope: single family, first-class Cyrillic (docs/DESIGN.md typography).
