@@ -16,6 +16,7 @@ class MapPin {
     this.description,
     this.startsAt,
     this.endsAt,
+    this.eventNight,
   });
 
   final String id;
@@ -35,6 +36,22 @@ class MapPin {
   final DateTime? startsAt;
   final DateTime? endsAt;
 
+  /// The Event Night this event belongs to (ADR 0004); null for places.
+  final DateTime? eventNight;
+
+  /// Started but not yet expired (ADR 0004: end time, or 06:00 the morning
+  /// after the Event Night when no end is set).
+  bool isLiveAt(DateTime now) {
+    final start = startsAt;
+    if (kind != PinKind.event || start == null || now.isBefore(start)) {
+      return false;
+    }
+    final expiry = endsAt ??
+        eventNight?.add(const Duration(days: 1, hours: 6)) ??
+        start.add(const Duration(hours: 6));
+    return now.isBefore(expiry);
+  }
+
   factory MapPin.event(Map<String, dynamic> row) => MapPin(
         id: row['id'] as String,
         title: row['title'] as String,
@@ -47,6 +64,7 @@ class MapPin {
         description: row['description'] as String?,
         startsAt: DateTime.tryParse(row['starts_at'] as String? ?? '')?.toLocal(),
         endsAt: DateTime.tryParse(row['ends_at'] as String? ?? '')?.toLocal(),
+        eventNight: DateTime.tryParse(row['event_night'] as String? ?? ''),
       );
 
   factory MapPin.place(Map<String, dynamic> row) => MapPin(

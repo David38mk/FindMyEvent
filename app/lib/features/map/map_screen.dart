@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/env.dart';
 import '../../core/models.dart';
+import '../../core/theme_provider.dart';
 import '../../l10n/app_localizations.dart';
 import 'cached_tile_provider.dart';
 import 'map_providers.dart';
@@ -22,6 +25,23 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   static const _skopje = LatLng(41.9981, 21.4254);
   final _mapController = MapController();
+  Timer? _expiryTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Live expiry (ADR 0004): the server filters ended events per query, so a
+    // periodic re-fetch makes finished pins vanish without user interaction.
+    _expiryTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (mounted) ref.invalidate(mapPinsProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
 
   /// dataviz styles (docs/DESIGN.md): near-monochrome basemap so pins and the
   /// amber brand are the only loud things on screen; variant follows theme.
@@ -128,6 +148,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                           cluster.pins.single.categorySlug]
                                       ?.icon)
                                   : null,
+                              live: cluster.pins.single
+                                  .isLiveAt(DateTime.now()),
                               onTap: () => _showPinSheet(cluster.pins.single),
                             )
                           : _ClusterMarker(
@@ -153,10 +175,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Expanded(child: _DaySelector()),
+                      const Expanded(child: _NightChips()),
                       const SizedBox(width: 8),
                       _FilterButton(l10n: l10n),
+                      const SizedBox(width: 8),
+                      const _SettingsButton(),
                     ],
                   ),
                 ),
@@ -170,6 +195,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
               ],
             ),
+          ),
+          _EventListSheet(
+            pins: pins,
+            onPinTap: (pin) {
+              _mapController.move(LatLng(pin.lat, pin.lng), 16);
+              _showPinSheet(pin);
+            },
           ),
         ],
       ),
@@ -290,43 +322,197 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
-class _DaySelector extends ConsumerWidget {
-  const _DaySelector();
+/// Preset night chips with real dates (docs/DESIGN.md date & night UX):
+/// Tonight / Tomorrow / Weekend / pick-a-night. Selection is a NightRange.
+class _NightChips extends ConsumerWidget {
+  const _NightChips();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final day = ref.watch(selectedDayProvider);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
+    final selected = ref.watch(selectedNightsProvider);
+    final tonight = currentEventNight();
+    final tomorrow = tonight.add(const Duration(days: 1));
+    final weekend = weekendRange();
+    final df = DateFormat('EEE d', l10n.localeName);
 
-    final label = day == today
-        ? l10n.today
-        : day == tomorrow
-            ? l10n.tomorrow
-            : DateFormat.MMMEd(l10n.localeName).format(day);
+    final presets = [
+      (label: '${l10n.tonight} · ${df.format(tonight)}',
+       range: NightRange(tonight, tonight)),
+      (label: '${l10n.tomorrow} · ${df.format(tomorrow)}',
+       range: NightRange(tomorrow, tomorrow)),
+      (label:
+          '${l10n.weekend} · ${weekend.from.day}–${weekend.to.day}',
+       range: weekend),
+    ];
+    final isPreset = presets.any((p) => p.range == selected);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            // No past days — the app's promise is "what's happening", not history.
-            onPressed: day.isAfter(today)
-                ? () => ref.read(selectedDayProvider.notifier).state =
-                    day.subtract(const Duration(days: 1))
-                : null,
-          ),
-          Text(label, style: Theme.of(context).textTheme.titleMedium),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: () => ref.read(selectedDayProvider.notifier).state =
-                day.add(const Duration(days: 1)),
+          for (final preset in presets)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(preset.label),
+                selected: selected == preset.range,
+                onSelected: (_) => ref
+                    .read(selectedNightsProvider.notifier)
+                    .state = preset.range,
+              ),
+            ),
+          ChoiceChip(
+            avatar: const Icon(Icons.calendar_month, size: 16),
+            label: Text(isPreset
+                ? l10n.pickNight
+                : df.format(selected.from)),
+            selected: !isPreset,
+            onSelected: (_) async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: selected.from,
+                firstDate: tonight,
+                lastDate: tonight.add(const Duration(days: 365)),
+              );
+              if (picked != null) {
+                ref.read(selectedNightsProvider.notifier).state =
+                    NightRange(picked, picked);
+              }
+            },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Theme override (docs/DESIGN.md): Auto / Light / Dark, persisted locally.
+class _SettingsButton extends ConsumerWidget {
+  const _SettingsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: IconButton(
+        tooltip: l10n.settings,
+        icon: const Icon(Icons.brightness_6_outlined),
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          builder: (context) => SafeArea(
+            child: Consumer(builder: (context, ref, _) {
+              final mode = ref.watch(themeModeProvider);
+              return RadioGroup<ThemeMode>(
+                groupValue: mode,
+                onChanged: (m) =>
+                    ref.read(themeModeProvider.notifier).set(m!),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioListTile<ThemeMode>(
+                      title: Text(l10n.themeAuto),
+                      value: ThemeMode.system,
+                    ),
+                    RadioListTile<ThemeMode>(
+                      title: Text(l10n.themeLight),
+                      value: ThemeMode.light,
+                    ),
+                    RadioListTile<ThemeMode>(
+                      title: Text(l10n.themeDark),
+                      value: ThemeMode.dark,
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 3-detent draggable list of the selected nights' events over the map
+/// (docs/DESIGN.md: Google-Maps pattern; map/list toggle rejected).
+class _EventListSheet extends StatelessWidget {
+  const _EventListSheet({required this.pins, required this.onPinTap});
+
+  final List<MapPin> pins;
+  final ValueChanged<MapPin> onPinTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final events = pins.where((p) => p.kind == PinKind.event).toList()
+      ..sort((a, b) => (a.startsAt ?? DateTime(2100))
+          .compareTo(b.startsAt ?? DateTime(2100)));
+    final now = DateTime.now();
+    final df = DateFormat('EEE d', l10n.localeName);
+    final multiNight =
+        events.map((e) => e.eventNight).whereType<DateTime>().toSet().length > 1;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.10,
+      minChildSize: 0.10,
+      maxChildSize: 0.9,
+      snap: true,
+      snapSizes: const [0.45],
+      builder: (context, scrollController) => Material(
+        color: Theme.of(context).cardTheme.color,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        elevation: 8,
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '${events.length} ${l10n.eventsLabel}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            if (events.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(l10n.noEventsNight),
+              ),
+            for (final event in events)
+              ListTile(
+                leading: Icon(Icons.location_pin, color: event.color),
+                title: Text(event.title),
+                subtitle: Text([
+                  if (event.startsAt != null)
+                    '${multiNight ? '${df.format(event.eventNight ?? event.startsAt!)} · ' : ''}${DateFormat.Hm().format(event.startsAt!)}',
+                  if (event.subtitle != null) event.subtitle!,
+                ].join(' · ')),
+                trailing: event.isLiveAt(now)
+                    ? Badge(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primary,
+                        label: Text(l10n.happeningNow),
+                      )
+                    : null,
+                onTap: () => onPinTap(event),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -438,12 +624,20 @@ class _FilterPanel extends ConsumerWidget {
 }
 
 class _PinMarker extends StatelessWidget {
-  const _PinMarker({required this.pin, required this.glyph, required this.onTap});
+  const _PinMarker({
+    required this.pin,
+    required this.glyph,
+    required this.live,
+    required this.onTap,
+  });
 
   final MapPin pin;
 
   /// White category glyph for place pins; null for events (plain head dot).
   final IconData? glyph;
+
+  /// Happening Now (ADR 0004): started, not yet expired — amber head dot.
+  final bool live;
   final VoidCallback onTap;
 
   @override
@@ -467,14 +661,17 @@ class _PinMarker extends StatelessWidget {
               shadows: const [Shadow(blurRadius: 4, color: Colors.black54)],
             ),
             Positioned(
-              top: glyph == null ? 12 : 9,
+              top: glyph == null ? (live ? 10 : 12) : 9,
               child: glyph == null
                   ? Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
+                      width: live ? 14 : 10,
+                      height: live ? 14 : 10,
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white,
+                        color: live ? const Color(0xFFFFB300) : Colors.white,
+                        border: live
+                            ? Border.all(color: Colors.white, width: 2)
+                            : null,
                       ),
                     )
                   : Icon(glyph, size: 14, color: Colors.white),

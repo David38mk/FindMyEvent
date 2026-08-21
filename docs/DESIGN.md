@@ -54,8 +54,20 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 - Places: all `#5B6472` slate, white category glyph.
 - DB `categories.color` updated by migration — colors stay DB-owned.
 
+## Date & night UX (decided 2026-08-21, research-driven — see ADR 0004)
+
+- **Event Night** = 06:00→06:00 unit (ADR 0004); all selection/grouping/expiry on it.
+- Selector = **preset chips with real dates**: "Tonight · пет 22", "Tomorrow · саб 23", "Weekend · 22–24", + calendar chip for a specific night. Arrows/day-strip pattern retired (no major app leads with it). Custom multi-night range picker = deferred; Weekend preset covers the 80% case.
+- **Expiry**: pin stays until `ends_at` (or event_night+1 06:00 fallback); map data refreshes periodically so finished events vanish live.
+- **Happening Now**: started-but-not-finished events get a distinct pin head (amber, enlarged) — white space none of the incumbents ship.
+- **Event list**: 3-detent draggable bottom sheet over the map (peek strip / half list / full list), events of the selected nights sorted by time; tapping a row centers the map + opens the detail sheet. Google-Maps pattern; list/map toggle rejected (documented discoverability failures).
+
+## Theme override (decided 2026-08-21)
+
+- Default **Auto** (follows system); settings button on the map lets users pin Light or Dark. Persisted locally (shared_preferences), no account needed.
+
 ## Still open (next sessions)
 
-- Date-selector UX changes (David has points — next grill series)
 - Custom brand-tinted map style (pre-launch)
 - Logo/wordmark + final name
+- `last_entry_at` field idea (RA's "last entry" deadline — more useful than end time for partygoers; consider in Phase 2 organizer form)

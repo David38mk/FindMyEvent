@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/age_gate_prefs.dart';
 import 'core/env.dart';
+import 'core/theme_provider.dart';
 import 'features/age_gate/age_gate_screen.dart';
 import 'features/map/map_screen.dart';
 import 'l10n/app_localizations.dart';
@@ -21,19 +22,20 @@ Future<void> main() async {
   runApp(const ProviderScope(child: FindMyEventApp()));
 }
 
-class FindMyEventApp extends StatelessWidget {
+class FindMyEventApp extends ConsumerWidget {
   const FindMyEventApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // docs/DESIGN.md: amber brand seed, dark designed first, system-follow.
+      // docs/DESIGN.md: amber brand seed, dark designed first; Auto follows
+      // system, user can pin Light/Dark in settings.
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider),
       home: const _AppGate(),
     );
   }
