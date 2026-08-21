@@ -11,7 +11,7 @@ Canonical language for this project. If a word is used in code, docs, or convers
 - **Filter** — a user's on-map selection of one or more Categories. Filters control which Pins render. No Filter selected = all Pins shown.
 - **Pin** — the map marker representing one Event or one Place inside the current Region.
 - **Open Now** — a Place state derived from its Opening Hours and current time. Only meaningful for Places, never Events (Events use start/end time instead).
-- **Time Scope** — the time window the map shows Events for. Three granularities: **Daily** (one day, default today; user switches between days), **Monthly** (a whole month), and **Yearly/Ongoing** (long-running Events spanning the year, e.g. a season-long festival). Pins carry a visual marker of the Time Scope of their Event.
+- **Time Scope** — the time window the map shows Events for. Three granularities: **Daily** (one day, default today; user switches between days), **Monthly** (a whole month), and **Yearly/Ongoing** (long-running Events spanning the year, e.g. a season-long festival). The selected Time Scope filters which Events appear; an Event's own duration and dates are shown in its detail view, not on the pin.
 - **Vice** — informal grouping word for legal-vice Categories (cigarettes, alcohol, hookah, betting). Marketing/product word only; the data model knows only Categories.
 - **Curator** — a team member (currently David + friend) who approves submitted Events, maintains Places, and can enter Events directly. Every Event is visible only after Curator approval.
 - **Organizer** — an external user with an account who submits their own Events for Curator approval. Exists from MVP.

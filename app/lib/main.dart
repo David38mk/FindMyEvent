@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/age_gate_prefs.dart';
@@ -29,8 +30,31 @@ class FindMyEventApp extends StatelessWidget {
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: const Color(0xFF7B2CBF)),
+      // docs/DESIGN.md: amber brand seed, dark designed first, system-follow.
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const _AppGate(),
+    );
+  }
+
+  static ThemeData _theme(Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    final base = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFFFFB300),
+        brightness: brightness,
+      ),
+      scaffoldBackgroundColor:
+          dark ? const Color(0xFF1A1815) : const Color(0xFFFAF8F5),
+      cardTheme: CardThemeData(
+        color: dark ? const Color(0xFF262320) : Colors.white,
+      ),
+    );
+    // Manrope: single family, first-class Cyrillic (docs/DESIGN.md typography).
+    return base.copyWith(
+      textTheme: GoogleFonts.manropeTextTheme(base.textTheme),
     );
   }
 }

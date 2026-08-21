@@ -2,10 +2,6 @@ import 'dart:ui';
 
 enum PinKind { event, place }
 
-/// How long an Event runs — the Time Scope from CONTEXT.md. Drives the pin
-/// ring color (pin body = Category, ring = Time Scope; PLAN.md pin visuals).
-enum TimeScope { daily, multiDay, ongoing }
-
 /// One pin on the map — an Event or a Place, flattened from the viewport RPCs.
 class MapPin {
   const MapPin({
@@ -39,20 +35,6 @@ class MapPin {
   final DateTime? startsAt;
   final DateTime? endsAt;
 
-  /// Places have no Time Scope; events classify by how long they run.
-  /// Thresholds: ≤36h = one-day (covers past-midnight parties), ≤32d = multi-day
-  /// (festival week, monthly program), longer = ongoing/season.
-  TimeScope? get timeScope {
-    final start = startsAt;
-    if (kind != PinKind.event || start == null) return null;
-    final end = endsAt;
-    if (end == null) return TimeScope.daily;
-    final duration = end.difference(start);
-    if (duration <= const Duration(hours: 36)) return TimeScope.daily;
-    if (duration <= const Duration(days: 32)) return TimeScope.multiDay;
-    return TimeScope.ongoing;
-  }
-
   factory MapPin.event(Map<String, dynamic> row) => MapPin(
         id: row['id'] as String,
         title: row['title'] as String,
@@ -82,15 +64,25 @@ class MapPin {
 /// Category as stored in the `categories` table; labels are localized
 /// client-side by slug (see categoryLabel in map_screen.dart).
 class MapCategory {
-  const MapCategory({required this.slug, required this.kind, required this.color});
+  const MapCategory({
+    required this.slug,
+    required this.kind,
+    required this.icon,
+    required this.color,
+  });
 
   final String slug;
   final String kind; // 'event' | 'place'
+
+  /// Material icon name string (e.g. 'local_bar') — mapped to IconData
+  /// client-side; used as the white glyph on place pins.
+  final String icon;
   final Color color;
 
   factory MapCategory.fromRow(Map<String, dynamic> row) => MapCategory(
         slug: row['slug'] as String,
         kind: row['kind'] as String,
+        icon: row['icon'] as String,
         color: colorFromHex(row['color'] as String),
       );
 }

@@ -23,8 +23,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   static const _skopje = LatLng(41.9981, 21.4254);
   final _mapController = MapController();
 
-  String get _tileUrl => Env.hasMapTiler
-      ? 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${Env.maptilerKey}'
+  /// dataviz styles (docs/DESIGN.md): near-monochrome basemap so pins and the
+  /// amber brand are the only loud things on screen; variant follows theme.
+  String _tileUrl(Brightness brightness) => Env.hasMapTiler
+      ? 'https://api.maptiler.com/maps/${brightness == Brightness.dark ? 'dataviz-dark' : 'dataviz'}/{z}/{x}/{y}.png?key=${Env.maptilerKey}'
       // OSM demo tiles: dev fallback only, never production (ADR 0001).
       : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -59,6 +61,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final l10n = AppLocalizations.of(context);
     final pinsAsync = ref.watch(mapPinsProvider);
     final selectedCats = ref.watch(selectedCategoriesProvider);
+    final categoryIndex = {
+      for (final c
+          in ref.watch(categoriesProvider).valueOrNull ?? const <MapCategory>[])
+        c.slug: c,
+    };
 
     final pins = (pinsAsync.valueOrNull ?? const <MapPin>[])
         .where((p) =>
@@ -96,7 +103,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: _tileUrl,
+                urlTemplate: _tileUrl(Theme.of(context).brightness),
                 userAgentPackageName: 'com.findmyevent.findmyevent',
                 tileProvider: CachedTileProvider(),
               ),
@@ -116,6 +123,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       child: cluster.pins.length == 1
                           ? _PinMarker(
                               pin: cluster.pins.single,
+                              glyph: cluster.pins.single.kind == PinKind.place
+                                  ? iconForName(categoryIndex[
+                                          cluster.pins.single.categorySlug]
+                                      ?.icon)
+                                  : null,
                               onTap: () => _showPinSheet(cluster.pins.single),
                             )
                           : _ClusterMarker(
@@ -138,8 +150,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _DaySelector(l10n: l10n),
-                _CategoryChips(l10n: l10n),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Row(
+                    children: [
+                      const Expanded(child: _DaySelector()),
+                      const SizedBox(width: 8),
+                      _FilterButton(l10n: l10n),
+                    ],
+                  ),
+                ),
                 if (pinsAsync.hasError)
                   Card(
                     margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -149,15 +169,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
               ],
-            ),
-          ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 0, 28),
-                child: _MapLegend(l10n: l10n),
-              ),
             ),
           ),
         ],
@@ -219,9 +230,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
             if (pin.startsAt != null) ...[
               const SizedBox(height: 4),
-              Text(DateFormat.MMMEd(l10n.localeName)
-                  .add_Hm()
-                  .format(pin.startsAt!)),
+              Text(_eventTimeText(l10n, pin)),
             ],
             if (pin.description != null && pin.description!.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -282,12 +291,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 }
 
 class _DaySelector extends ConsumerWidget {
-  const _DaySelector({required this.l10n});
-
-  final AppLocalizations l10n;
+  const _DaySelector();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final day = ref.watch(selectedDayProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -300,7 +308,7 @@ class _DaySelector extends ConsumerWidget {
             : DateFormat.MMMEd(l10n.localeName).format(day);
 
     return Card(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      margin: EdgeInsets.zero,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -324,54 +332,122 @@ class _DaySelector extends ConsumerWidget {
   }
 }
 
-class _CategoryChips extends ConsumerWidget {
-  const _CategoryChips({required this.l10n});
+/// Filter button + expandable panel (docs/DESIGN.md filter & legend UX):
+/// the panel doubles as the legend — every category shown with its color
+/// dot (events) or glyph (places). Badge = active filter count.
+class _FilterButton extends ConsumerWidget {
+  const _FilterButton({required this.l10n});
 
   final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
     final selected = ref.watch(selectedCategoriesProvider);
-    if (categories.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 48,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: [
-          for (final cat in categories)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                avatar: Icon(Icons.circle, color: cat.color, size: 14),
-                label: Text(categoryLabel(l10n, cat.slug)),
-                selected: selected.contains(cat.slug),
-                onSelected: (_) {
-                  final next = {...selected};
-                  next.contains(cat.slug)
-                      ? next.remove(cat.slug)
-                      : next.add(cat.slug);
-                  ref.read(selectedCategoriesProvider.notifier).state = next;
-                },
-              ),
-            ),
-        ],
+    return Card(
+      margin: EdgeInsets.zero,
+      child: IconButton(
+        tooltip: l10n.filters,
+        icon: Badge(
+          isLabelVisible: selected.isNotEmpty,
+          label: Text('${selected.length}'),
+          child: const Icon(Icons.filter_list),
+        ),
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          builder: (context) => const SafeArea(child: _FilterPanel()),
+        ),
       ),
     );
   }
 }
 
+class _FilterPanel extends ConsumerWidget {
+  const _FilterPanel();
+
+  /// Empty selection = "all". First tap from "all" isolates the tapped
+  /// category; selecting every category collapses back to "all".
+  void _tap(WidgetRef ref, String slug, int totalCount) {
+    final selected = ref.read(selectedCategoriesProvider);
+    Set<String> next;
+    if (selected.isEmpty) {
+      next = {slug};
+    } else {
+      next = {...selected};
+      next.contains(slug) ? next.remove(slug) : next.add(slug);
+    }
+    if (next.length == totalCount) next = {};
+    ref.read(selectedCategoriesProvider.notifier).state = next;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
+    final selected = ref.watch(selectedCategoriesProvider);
+    final showAll = selected.isEmpty;
+
+    Widget tile(MapCategory cat) {
+      final isOn = showAll || selected.contains(cat.slug);
+      return ListTile(
+        dense: true,
+        leading: cat.kind == 'event'
+            ? Icon(Icons.circle, color: cat.color, size: 16)
+            : CircleAvatar(
+                radius: 10,
+                backgroundColor: cat.color,
+                child: Icon(iconForName(cat.icon),
+                    size: 12, color: Colors.white),
+              ),
+        title: Text(categoryLabel(l10n, cat.slug)),
+        trailing: isOn
+            ? Icon(Icons.check,
+                color: Theme.of(context).colorScheme.primary, size: 20)
+            : null,
+        onTap: () => _tap(ref, cat.slug, categories.length),
+      );
+    }
+
+    return ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l10n.filters,
+                  style: Theme.of(context).textTheme.titleMedium),
+              TextButton(
+                onPressed: showAll
+                    ? null
+                    : () => ref
+                        .read(selectedCategoriesProvider.notifier)
+                        .state = {},
+                child: Text(l10n.filterAll),
+              ),
+            ],
+          ),
+        ),
+        for (final cat in categories.where((c) => c.kind == 'event')) tile(cat),
+        const Divider(),
+        for (final cat in categories.where((c) => c.kind == 'place')) tile(cat),
+      ],
+    );
+  }
+}
+
 class _PinMarker extends StatelessWidget {
-  const _PinMarker({required this.pin, required this.onTap});
+  const _PinMarker({required this.pin, required this.glyph, required this.onTap});
 
   final MapPin pin;
+
+  /// White category glyph for place pins; null for events (plain head dot).
+  final IconData? glyph;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final scope = pin.timeScope;
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(
@@ -379,8 +455,8 @@ class _PinMarker extends StatelessWidget {
         // always opens the full detail sheet regardless of platform.
         message: _tooltipText(pin),
         // Classic pin, tip on the exact coordinate (marker anchors topCenter).
-        // Decided visuals (PLAN.md): body color = Category; head dot = Time
-        // Scope for events, storefront glyph for places (no Time Scope).
+        // docs/DESIGN.md pin system: events = curated hue + plain head,
+        // places = neutral slate + white category glyph. No time indication.
         child: Stack(
           alignment: Alignment.topCenter,
           children: [
@@ -391,22 +467,17 @@ class _PinMarker extends StatelessWidget {
               shadows: const [Shadow(blurRadius: 4, color: Colors.black54)],
             ),
             Positioned(
-              top: 8,
-              child: Container(
-                width: 16,
-                height: 16,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color:
-                      scope != null ? timeScopeColor(scope) : Colors.white,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: scope == null
-                    ? const Icon(Icons.storefront,
-                        size: 10, color: Colors.black87)
-                    : null,
-              ),
+              top: glyph == null ? 12 : 9,
+              child: glyph == null
+                  ? Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(glyph, size: 14, color: Colors.white),
             ),
           ],
         ),
@@ -502,109 +573,35 @@ List<_PinCluster> _clusterPins(
   return clusters;
 }
 
-/// Ring colors for Time Scopes. Deliberately NOT category colors (those live
-/// in the DB): red = tonight-energy, blue = spans days, green = season-long.
-Color timeScopeColor(TimeScope scope) => switch (scope) {
-      TimeScope.daily => const Color(0xFFFF1744),
-      TimeScope.multiDay => const Color(0xFF00B0FF),
-      TimeScope.ongoing => const Color(0xFF00C853),
-    };
+/// Material icon name (from the DB `categories.icon` column) → IconData.
+/// Flutter can't look up icons by string at runtime without pulling the whole
+/// icon font map in — a small const map over our 10 categories is enough.
+const _materialIcons = <String, IconData>{
+  'celebration': Icons.celebration,
+  'music_note': Icons.music_note,
+  'mic': Icons.mic,
+  'festival': Icons.festival,
+  'local_bar': Icons.local_bar,
+  'smoking_rooms': Icons.smoking_rooms,
+  'liquor': Icons.liquor,
+  'air': Icons.air,
+  'casino': Icons.casino,
+  'storefront': Icons.storefront,
+};
 
-/// Collapsible legend (decided in planning: legend ships with pin visuals).
-/// Collapsed to a single button by default — map real estate is the product.
-class _MapLegend extends ConsumerStatefulWidget {
-  const _MapLegend({required this.l10n});
+IconData iconForName(String? name) => _materialIcons[name] ?? Icons.place;
 
-  final AppLocalizations l10n;
-
-  @override
-  ConsumerState<_MapLegend> createState() => _MapLegendState();
-}
-
-class _MapLegendState extends ConsumerState<_MapLegend> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = widget.l10n;
-    if (!_expanded) {
-      return Card(
-        child: IconButton(
-          tooltip: l10n.legendTooltip,
-          icon: const Icon(Icons.layers_outlined),
-          onPressed: () => setState(() => _expanded = true),
-        ),
-      );
-    }
-
-    final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
-    return Card(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 240, maxHeight: 320),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(l10n.legendTooltip,
-                      style: Theme.of(context).textTheme.titleSmall),
-                  InkWell(
-                    onTap: () => setState(() => _expanded = false),
-                    child: const Icon(Icons.close, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _legendRow(
-                  const Icon(Icons.location_pin, size: 18), l10n.legendEvent),
-              _legendRow(
-                  const Icon(Icons.storefront, size: 16), l10n.legendPlace),
-              const Divider(),
-              _legendRow(_dot(TimeScope.daily), l10n.legendDaily),
-              _legendRow(_dot(TimeScope.multiDay), l10n.legendMultiDay),
-              _legendRow(_dot(TimeScope.ongoing), l10n.legendOngoing),
-              if (categories.isNotEmpty) ...[
-                const Divider(),
-                for (final cat in categories)
-                  _legendRow(
-                    Icon(Icons.circle, color: cat.color, size: 14),
-                    categoryLabel(l10n, cat.slug),
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Matches the event pin's head dot.
-  static Widget _dot(TimeScope scope) => Container(
-        width: 14,
-        height: 14,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: timeScopeColor(scope),
-        ),
-      );
-
-  Widget _legendRow(Widget marker, String label) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            SizedBox(width: 22, child: Center(child: marker)),
-            const SizedBox(width: 8),
-            Expanded(
-              child:
-                  Text(label, style: Theme.of(context).textTheme.bodySmall),
-            ),
-          ],
-        ),
-      );
+/// Start time, plus the full date range when the event spans several days
+/// (docs/DESIGN.md: duration lives in the detail view, not on the pin).
+String _eventTimeText(AppLocalizations l10n, MapPin pin) {
+  final df = DateFormat.MMMEd(l10n.localeName);
+  final start = df.add_Hm().format(pin.startsAt!);
+  final end = pin.endsAt;
+  if (end == null) return start;
+  final sameDay = end.year == pin.startsAt!.year &&
+      end.month == pin.startsAt!.month &&
+      end.day == pin.startsAt!.day;
+  return sameDay ? start : '$start — ${df.format(end)}';
 }
 
 /// Slug → localized label. Slugs are stable DB identifiers; labels are UI.

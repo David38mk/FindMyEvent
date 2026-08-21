@@ -22,7 +22,7 @@ final categoriesProvider = FutureProvider<List<MapCategory>>((ref) async {
   if (!Env.hasSupabase) return const [];
   final rows = await Supabase.instance.client
       .from('categories')
-      .select('slug, kind, color');
+      .select('slug, kind, icon, color');
   return rows.map(MapCategory.fromRow).toList();
 });
 
