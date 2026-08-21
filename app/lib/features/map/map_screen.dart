@@ -461,7 +461,10 @@ class _EventListSheet extends StatelessWidget {
       maxChildSize: 0.9,
       snap: true,
       snapSizes: const [0.45],
-      builder: (context, scrollController) => Material(
+      // Short, eased snap — the default proportional duration feels abrupt.
+      snapAnimationDuration: const Duration(milliseconds: 220),
+      builder: (context, scrollController) => RepaintBoundary(
+          child: Material(
         color: Theme.of(context).cardTheme.color,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -516,7 +519,7 @@ class _EventListSheet extends StatelessWidget {
               ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

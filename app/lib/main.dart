@@ -47,18 +47,38 @@ class FindMyEventApp extends ConsumerWidget {
       seedColor: AppPalette.brand,
       brightness: brightness,
     ).copyWith(
+      // fromSeed desaturates the seed into tonal "container" variants (muddy
+      // brick in dark mode) — force TRUE Signal Red on every role that means
+      // "selected/action" (ADR 0005: brand = vivid, chrome-only).
+      primary: AppPalette.brand,
+      onPrimary: Colors.white,
+      primaryContainer: AppPalette.brand,
+      onPrimaryContainer: Colors.white,
+      secondaryContainer: AppPalette.brand,
+      onSecondaryContainer: Colors.white,
       error: AppPalette.brandDeep,
       onSurface:
           dark ? AppPalette.textPrimaryDark : AppPalette.textPrimaryLight,
       onSurfaceVariant:
           dark ? AppPalette.textSecondaryDark : AppPalette.textSecondaryLight,
     );
-    if (dark) {
-      scheme = scheme.copyWith(
-        surface: AppPalette.asphalt,
-        surfaceContainerHighest: AppPalette.graphite,
-      );
-    }
+    // Surfaces are absolute palette values in BOTH themes — never the
+    // seed-tinted tones fromSeed derives (David: colors must be exact).
+    scheme = dark
+        ? scheme.copyWith(
+            surface: AppPalette.asphalt,
+            surfaceContainerHighest: AppPalette.graphite,
+            surfaceContainerHigh: AppPalette.graphite,
+            surfaceContainerLow: AppPalette.asphalt,
+            surfaceContainer: AppPalette.asphalt,
+          )
+        : scheme.copyWith(
+            surface: Colors.white,
+            surfaceContainerHighest: AppPalette.cream,
+            surfaceContainerHigh: AppPalette.cream,
+            surfaceContainerLow: Colors.white,
+            surfaceContainer: Colors.white,
+          );
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
@@ -66,6 +86,7 @@ class FindMyEventApp extends ConsumerWidget {
       cardTheme: CardThemeData(
         color: dark ? AppPalette.asphalt : Colors.white,
       ),
+      chipTheme: const ChipThemeData(checkmarkColor: Colors.white),
     );
     // Manrope: single family, first-class Cyrillic (docs/DESIGN.md typography).
     return base.copyWith(
