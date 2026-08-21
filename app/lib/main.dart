@@ -47,8 +47,7 @@ class FindMyEventApp extends ConsumerWidget {
       seedColor: AppPalette.brand,
       brightness: brightness,
     ).copyWith(
-      secondary: AppPalette.amberLight,
-      error: AppPalette.danger,
+      error: AppPalette.brandDeep,
       onSurface:
           dark ? AppPalette.textPrimaryDark : AppPalette.textPrimaryLight,
       onSurfaceVariant:
@@ -56,17 +55,16 @@ class FindMyEventApp extends ConsumerWidget {
     );
     if (dark) {
       scheme = scheme.copyWith(
-        surface: AppPalette.elevatedSurface,
-        surfaceContainerHighest: AppPalette.raisedSurface,
+        surface: AppPalette.asphalt,
+        surfaceContainerHighest: AppPalette.graphite,
       );
     }
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor:
-          dark ? AppPalette.midnightBg : AppPalette.warmLightBg,
+      scaffoldBackgroundColor: dark ? AppPalette.voidBg : AppPalette.cream,
       cardTheme: CardThemeData(
-        color: dark ? AppPalette.elevatedSurface : Colors.white,
+        color: dark ? AppPalette.asphalt : Colors.white,
       ),
     );
     // Manrope: single family, first-class Cyrillic (docs/DESIGN.md typography).

@@ -46,24 +46,30 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 - Via `google_fonts` package for now (runtime fetch + cache); **bundle the TTFs as assets before store launch** so first offline run is correct.
 - Logo/wordmark font = separate branding decision, tied to the name choice.
 
-## Palette v2 (decided 2026-08-21, David's refinement — supersedes v1)
+## Palette v3 — "Hot City" (LOCKED 2026-08-21, supersedes v1/v2 — see ADR 0005)
 
-App-side tokens live in `app/lib/core/palette.dart` (AppPalette); category colors stay DB-owned.
+"The city is on. Go out." Dark near-monochrome UI; color = signal layer, like lights in a club. Three layers — brand / status / category — tokens in `app/lib/core/palette.dart`, category hexes DB-owned.
+
+**Layer 1 — Brand (UI chrome only, never on pins):**
 
 | Token | Hex | Usage |
 |---|---|---|
-| Electric Amber (brand seed) | `#FFB000` | CTAs, FABs, selected states, badges, Happening Now |
-| Amber Light | `#FFD166` | highlights, secondary emphasis (scheme.secondary) |
-| Midnight | `#121212` | dark background |
-| Elevated Surface | `#1C1B1A` | dark cards, sheets |
-| Raised Surface | `#292725` | dark inputs, active containers |
-| Warm Light BG | `#FAF9F6` | light background |
-| Pure White | `#FFFFFF` | light cards |
-| Danger | `#FF5C5C` | errors, urgent states (scheme.error) |
-| Text 1 dark / 2 dark | `#F5F3EF` / `#AAA6A0` | dark-mode text |
-| Text 1 light / 2 light | `#1C1917` / `#6B6560` | light-mode text |
+| Signal Red | `#FF3B30` | seed: CTAs, FABs, selected states |
+| Deep Red | `#D91F26` | errors + destructive — ALWAYS with icon+text (red-brand discipline) |
 
-Category hues (DB, migration `20260821180000`): party `#FF4D8D`, concert `#7C5CFC`, standup `#12C7B3`, festival `#4DBA63`, places `#64748B` slate.
+**Layer 2 — Status:**
+
+| Token | Hex | State |
+|---|---|---|
+| Solar Yellow | `#FFE600` | Happening Now (live) — never bare on light: filled chip + near-black text |
+| Tangerine-light | `#FF9F45` | Trending (reserved) |
+| Steel | `#9299A8` | Sold out (reserved) |
+| Amber | `#FFB000` | Almost sold out (reserved) |
+| Mint | `#38E8C5` | Free entry (reserved) |
+
+**Layer 3 — Category (DB, migration `20260821200000`):** party `#FF3D81`, concert `#8F5BFF`, standup `#19D3C5` aqua, festival `#FF7A00` tangerine; places `#64748B` slate (furniture, not signal). Culture `#635BFF` / sports `#D7FF3F` reserved for future taxonomy.
+
+**Surfaces & text:** dark = Void `#0A0A0A` bg, Asphalt `#171717` cards, Graphite `#242424` inputs; light = Cream `#FFFDF8` bg, white cards. Text dark `#F4F7FB`/`#9299A8`, light `#1C1917`/`#6B6560`.
 
 ## Date & night UX (decided 2026-08-21, research-driven — see ADR 0004)
 

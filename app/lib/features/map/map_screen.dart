@@ -503,10 +503,12 @@ class _EventListSheet extends StatelessWidget {
                     '${multiNight ? '${df.format(event.eventNight ?? event.startsAt!)} · ' : ''}${DateFormat.Hm().format(event.startsAt!)}',
                   if (event.subtitle != null) event.subtitle!,
                 ].join(' · ')),
+                // Solar Yellow NOW badge — always filled with near-black text,
+                // both themes (yellow is invisible bare on light, ADR 0005).
                 trailing: event.isLiveAt(now)
                     ? Badge(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primary,
+                        backgroundColor: AppPalette.happeningNow,
+                        textColor: Colors.black87,
                         label: Text(l10n.happeningNow),
                       )
                     : null,
@@ -669,7 +671,7 @@ class _PinMarker extends StatelessWidget {
                       height: live ? 14 : 10,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: live ? AppPalette.brand : Colors.white,
+                        color: live ? AppPalette.happeningNow : Colors.white,
                         border: live
                             ? Border.all(color: Colors.white, width: 2)
                             : null,
