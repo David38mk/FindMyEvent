@@ -72,6 +72,7 @@ sources      id, name, url, trust ('trusted'|'unverified'), enabled
 - Daily Time Scope selector; pin visuals (category body + time-scope ring) + collapsible legend.
 - Pin detail sheet + directions deep-link.
 - Seed ~30 Places (OSM POI export + manual cleanup) and hand-entered Events for the coming weekends.
+- **Known gap (found 2026-08-28):** the OSM import brought in name/geo/address only — `places.phone` and `places.opening_hours` are empty for all 99 places, and `map_places` does not return either column. So the **Open Now toggle decided in §1 was never built and currently has no data**, and no "call the venue" affordance is possible. Fix = re-run the Overpass import enriching existing rows with the `phone`/`opening_hours` tags, then add both columns to the RPC.
 - **Exit:** installable APK/TestFlight build a stranger can use to find a real event tonight.
 
 ### Phase 2 — Accounts, submissions & reviews
@@ -87,7 +88,17 @@ sources      id, name, url, trust ('trusted'|'unverified'), enabled
 - **Exit:** scraper runs a week unattended, produces real approved events.
 
 ### Phase 4 — Polish & growth (post-MVP menu)
-- Favorites/save, push notification "tonight in Skopje", Open-Now refinements, event search, second Region, organizer analytics, monetization (promoted pins) — pick per traction.
+Ordered by cost-to-value after the 2026-08-28 competitor review (§7):
+
+1. **Call / reserve at the venue** — a `tel:` button on place and event sheets. Table reservation by phone is the Skopje norm, and Findzzer charges attention for the same thing. Blocked only by the `phone` data gap above.
+2. **Open Now** — already promised in §1, still unbuilt (same data gap).
+3. **Save / favourite** — cheapest retention hook now that Phase 2 brings accounts. New `saved_events` table + RLS.
+4. **Going / interested counts** — the strongest social hook the competitor has, and a data flywheel: it tells us which listed events are actually real.
+5. **Push notifications** — "3 parties near you tonight", "the event you saved starts in 2h". This is what makes a nightlife app get opened at 21:00. Needs FCM + a scheduled job.
+6. **Venue claiming** — a bar claims its Place, maintains hours/photos. Free data upkeep, and the natural door to promoted placement.
+7. Event search, second Region, organizer analytics.
+
+**Deliberately not on this list:** in-app chat/messaging (moderation liability), AI recommendations (meaningless without usage data), and global scope — all three are competitor features we are choosing not to copy.
 
 ## 5. Open questions (defaults chosen — override in HANDOFF.md)
 
@@ -105,3 +116,21 @@ sources      id, name, url, trust ('trusted'|'unverified'), enabled
 - Git: `main` always builds; short-lived feature branches; pull before session, push after. Small commits.
 - Suggested ownership: **Dev A (David)** app/map UI, **Dev B (friend)** Supabase schema + scraper — swap per phase to both learn the stack. Ownership recorded per-phase in HANDOFF.md.
 - Decisions that outlive a session → ADR in `docs/adr/`; term changes → CONTEXT.md. HANDOFF.md is for state, not decisions.
+
+## 7. Competitive landscape (added 2026-08-28)
+
+**Findzzer** ([findzzer.com](https://findzzer.com/), [iOS](https://apps.apple.com/us/app/findzzer-events-near-you/id6526479057), [Android](https://play.google.com/store/apps/details?id=com.mariobojarovski.trekvent)) is a **direct competitor built in Skopje** — developer Mario Bojarovski, North Macedonia. Live on both stores, v4.6.3 shipped 2026-08-21 (actively developed). Their pitch — "Discover Local Events Near You | Concerts, Parties & Nightlife" — is nearly ours.
+
+**They have:** AI recommendations, "see who's going", chat/messaging, trending, notifications, favourites, user-created + promoted events, reserve-a-table, Google login. Free, ad-supported, Lifestyle category.
+
+**Their traction is small** (3 iOS ratings) — the market is not won.
+
+**Where we are different, and where the plan must stay pointed:**
+
+1. **Language.** Findzzer is English-only. Ours is MK + EN from Phase 0, with Albanian planned. For a Skopje nightlife app this is the sharpest edge we have — treat MK as the primary store-listing language, and pull **Albanian forward** rather than leaving it indefinitely "later".
+2. **Depth over breadth.** They sell "events around the world"; global means empty everywhere. Our bet is density in one city — which makes the Phase 1 exit criterion (real events for a real weekend) more urgent than any new feature.
+3. **The vices layer is unique.** Nobody else maps where to buy cigarettes at 02:00, an open night shop, hookah. This is the wedge, not a side feature.
+4. **Curation vs UGC.** They let anyone post. We run submissions and scrapes through a Curator queue with Source trust levels — "is this event real?" is a question we can answer and they cannot.
+5. **Map-first, not feed-first.** They are shaped like a social network; we are shaped like a map utility. Keep the map the product.
+
+**Consequence for sequencing:** feature parity is not the goal — content density and the differentiators above are. Phase 4 items adopted from their feature set are listed in priority order in §4.
