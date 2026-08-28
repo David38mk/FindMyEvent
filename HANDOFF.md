@@ -9,6 +9,23 @@ Two devs, two Claude Code instances, one repo. This file is the shared memory be
 3. Entries are **append-only** — never edit or delete another session's entry.
 4. This file holds **state** (what's done, what's next, what's blocked). Durable decisions go to `docs/adr/`; term definitions go to `CONTEXT.md`; scope changes go to `PLAN.md`. Link them from your entry instead of restating.
 5. Keep entries under ~15 lines. Bullet points, no prose walls.
+6. **Before touching the database:** run `npx supabase migration list`. Every row must show BOTH a local and a remote value — see DB sync rules below.
+
+## Database sync rules (both Claudes MUST follow)
+
+The repo must always describe the live database. Drift happened once (2026-08-28: the remote had a migration with no file in git), so these are hard rules now.
+
+1. **Schema changes ship only as migration files.** The Supabase dashboard SQL editor is for DATA (approving events, fixing a place name) — never `create` / `alter` / `drop`. A dashboard schema edit writes no migration row at all, so `migration list` still looks clean while the schema has already moved.
+2. **Create files with `npx supabase migration new <name>`** — never hand-write the timestamp. Two devs picking round numbers by hand will collide or mis-order.
+3. **`git pull` before every `db push`.** Pushing from a stale checkout deploys an older set and lies about ordering.
+4. **`db push` and `git push` happen in the same session — both or neither.** Database and repo move together.
+5. **Announce here before pushing a migration** ("pushing X now"). This log is the lock between two people sharing one database.
+6. **Migration files are append-only once deployed anywhere.** Fix forward with a new file; never edit or delete a deployed one.
+7. **Session check:** `npx supabase migration list` (both columns filled on every row). Deeper check that also catches dashboard edits: `npx supabase db diff` should print nothing.
+
+**Row missing `local`** (remote has a migration the repo doesn't): the dev who applied it commits and pushes the file. Only if it truly came from the dashboard, run `npx supabase db pull` to capture it, then commit — never `db pull` before asking, or you create a duplicate of a file that is about to be pushed.
+
+**Row missing `remote`:** the file exists in the repo but isn't deployed — someone runs `npx supabase db push`.
 
 ## Entry template
 
