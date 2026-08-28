@@ -92,7 +92,21 @@ function toStartsAt(date: string, time: string): string {
   return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00+02:00`;
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // Deployed with --no-verify-jwt (this endpoint is called by pg_cron, not a
+  // logged-in user) and gated by its own single-purpose secret instead — the
+  // project's service_role key deliberately never goes near this function or
+  // a committed file. CRON_SECRET is set via `supabase secrets set` and the
+  // matching value lives only in Supabase Vault (scrape_kadevecer_auth),
+  // referenced by the cron job in 20260824103415_kadevecer_source_and_cron.sql.
+  const expected = `Bearer ${Deno.env.get("CRON_SECRET")}`;
+  if (req.headers.get("Authorization") !== expected) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const pageRes = await fetch(EVENTS_URL, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FindMyEventBot/1.0)" },
