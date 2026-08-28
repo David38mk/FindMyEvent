@@ -54,8 +54,8 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 
 | Token | Hex | Usage |
 |---|---|---|
-| Signal Red | `#FF3B30` | seed: CTAs, FABs, selected states |
-| Deep Red | `#D91F26` | errors + destructive — ALWAYS with icon+text (red-brand discipline) |
+| Signal Red | `#FF1744` | seed: CTAs, FABs, selected states |
+| Deep Red | `#D5002B` | errors + destructive — ALWAYS with icon+text (red-brand discipline) |
 
 **Layer 2 — Status:**
 
@@ -109,6 +109,7 @@ Inspired by Findzzer's poster pins, adapted to our data reality: **no event in t
 
 - **MapTiler `basic-v2` / `basic-v2-dark`** — major landmarks and street names return, far calmer than `streets-v2`. Rationale: `dataviz` was clean but anonymous; people in Skopje navigate by landmark ("the place next to Tinex"), which Findzzer gets from Apple Maps' POI layer and we had thrown away.
 - **Custom MapTiler style stays the real answer** (dataviz base + major POIs re-enabled in muted grey) — still the pre-launch polish item, now with a concrete brief.
+- **Tiles render greyscale** (`basemapFilter` in `app/lib/core/map_tiles.dart`) — full desaturation in both themes, dark trimmed to 92% brightness on top. Reference: Google-Maps-style monochrome night basemaps. The basemap carries no hue at all, so pins are the only saturated thing on screen — the palette rule enforced from the other side. Green landuse was the specific offender: it sits almost opposite Signal Red on the wheel, and the two vibrated. POI labels and street names survive the filter, so the landmark navigation we chose `basic-v2` for is intact. A paint filter rather than a custom style so it costs no extra tile requests and tunes per theme without a redeploy.
 - Verify against real card pins on device before finalising: this is a look-at-it decision, not an argue-about-it one.
 
 ## Map chrome layout (decided 2026-08-28, supersedes the filter-button placement above)

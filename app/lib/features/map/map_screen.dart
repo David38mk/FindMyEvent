@@ -122,10 +122,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: mapTileUrl(Theme.of(context).brightness),
-                userAgentPackageName: 'com.findmyevent.findmyevent',
-                tileProvider: CachedTileProvider(),
+              ColorFiltered(
+                colorFilter: basemapFilter(Theme.of(context).brightness),
+                child: TileLayer(
+                  urlTemplate: mapTileUrl(Theme.of(context).brightness),
+                  userAgentPackageName: 'com.findmyevent.findmyevent',
+                  tileProvider: CachedTileProvider(),
+                ),
               ),
               MarkerLayer(
                 markers: [

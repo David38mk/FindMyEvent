@@ -5,10 +5,12 @@ import 'dart:ui';
 /// (pins; hexes live in the DB). UI stays Void/Asphalt/white; color = signals.
 abstract final class AppPalette {
   // Brand — Signal Red. UI chrome only (CTAs, FABs, selected), NEVER on pins.
-  static const brand = Color(0xFFFF3B30);
+  // Hue 348: blue sits above green, which is what keeps it reading sharp red
+  // rather than tomato. Warmer reds (hue > 0) go orange against the basemap.
+  static const brand = Color(0xFFFF1744);
   // Errors + destructive; deeper than brand and always paired with icon+text
   // so red-as-brand and red-as-error never get confused (ADR 0005).
-  static const brandDeep = Color(0xFFD91F26);
+  static const brandDeep = Color(0xFFD5002B);
 
   // Status layer. Only happeningNow is wired today; the rest are RESERVED for
   // future features (keep them from being reassigned to something else).

@@ -121,10 +121,13 @@ class _PinPickerScreenState extends State<PinPickerScreen> {
               onTap: (_, point) => setState(() => _picked = point),
             ),
             children: [
-              TileLayer(
-                urlTemplate: mapTileUrl(Theme.of(context).brightness),
-                userAgentPackageName: 'com.findmyevent.findmyevent',
-                tileProvider: CachedTileProvider(),
+              ColorFiltered(
+                colorFilter: basemapFilter(Theme.of(context).brightness),
+                child: TileLayer(
+                  urlTemplate: mapTileUrl(Theme.of(context).brightness),
+                  userAgentPackageName: 'com.findmyevent.findmyevent',
+                  tileProvider: CachedTileProvider(),
+                ),
               ),
               if (picked != null)
                 MarkerLayer(

@@ -26,7 +26,7 @@ space, reads as urgency and city energy, and pairs with a Solar Yellow
 
 **Hot City locked.** Structure matters more than hexes — three color layers:
 
-1. **Brand** — Signal Red `#FF3B30`. UI chrome only (CTAs, FABs, selected
+1. **Brand** — Signal Red `#FF1744`. UI chrome only (CTAs, FABs, selected
    states). Never on map pins.
 2. **Status** — what's happening: Solar Yellow `#FFE600` = Happening Now
    (live today); Trending `#FF9F45`, Sold Out, Almost Sold Out, Free = reserved
@@ -40,7 +40,7 @@ like lights in a dark club.
 
 Guardrails accepted with the decision:
 
-- Errors use Deep Red `#D91F26` + always icon+text, never bare color, so
+- Errors use Deep Red `#D5002B` + always icon+text, never bare color, so
   red-as-brand and red-as-error stay distinguishable.
 - Solar Yellow never appears bare on light surfaces — always a filled chip
   with near-black text.
@@ -57,3 +57,29 @@ Guardrails accepted with the decision:
   (Phase 2 organizer form especially).
 - Palette leans toward the "Vajb" name candidate energy-wise; name decision
   (PLAN.md §5.7) still open.
+
+## Amendment — 2026-08-28: Signal Red re-hued
+
+Status: accepted. The three-layer structure and every other token stand; only
+the two brand hexes move.
+
+Seen on device, `#FF3B30` read orange rather than red. It is measurably warm:
+green sits 11 points above blue, and red mixed toward green is orange. On the
+map that lean was amplified by the green landuse behind the pins.
+
+| Token | Was | Now | Hue |
+| --- | --- | --- | --- |
+| `brand` | `#FF3B30` | `#FF1744` | 3° → 348° |
+| `brandDeep` | `#D91F26` | `#D5002B` | 358° → 348° |
+
+Deep Red moved with it. Left at `#D91F26` it would have been *warmer* than the
+brand it is supposed to be a deeper shade of, so the two would have read as
+unrelated reds instead of one family. Both now sit at 348°, differing only in
+depth — which is what the original guardrail intended.
+
+Contrast consequences: white on `brand` is 3.9:1 (was 3.6:1) — still large-text
+only, which is all it is used for. White on `brandDeep` is 5.4:1, clearing AA
+for body text, so error text is safe at any size.
+
+`#FF3B30` was also Apple's system red; the app ships Android-first, so that
+association was never load-bearing either way.
