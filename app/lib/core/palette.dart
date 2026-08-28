@@ -7,10 +7,37 @@ abstract final class AppPalette {
   // Brand — Signal Red. UI chrome only (CTAs, FABs, selected), NEVER on pins.
   // Hue 348: blue sits above green, which is what keeps it reading sharp red
   // rather than tomato. Warmer reds (hue > 0) go orange against the basemap.
-  static const brand = Color(0xFFFF1744);
-  // Errors + destructive; deeper than brand and always paired with icon+text
-  // so red-as-brand and red-as-error never get confused (ADR 0005).
-  static const brandDeep = Color(0xFFD5002B);
+  //
+  // Two shades, one identity. A colour's lightness has to answer to the ground
+  // it sits on: neon reads as a light source on near-black but turns garish on
+  // white, and poster crimson does the reverse. The Sift Heads reference this
+  // is drawn from puts its red on white, which is why that shade is the darker
+  // of the two. Don't reach for either constant directly — call [brandFor].
+  static const brand = Color(0xFFFF1744); // on night surfaces
+  static const brandCrimson = Color(0xFFC8102E); // on light surfaces
+
+  /// The brand red for [brightness].
+  static Color brandFor(Brightness brightness) =>
+      brightness == Brightness.dark ? brand : brandCrimson;
+
+  // Errors + destructive, always paired with icon+text so red-as-brand and
+  // red-as-error never get confused (ADR 0005).
+  //
+  // Two shades for the same reason as the brand, plus a measured one:
+  // colorScheme.error is used as inline TEXT as well as a snackbar fill, and
+  // #D5002B on Asphalt is only 3.3:1 — below AA. Dark theme therefore takes
+  // the light shade with near-black on top, which is Material's own convention
+  // for dark error roles.
+  static const brandDeep = Color(0xFFD5002B); // on light surfaces
+  static const brandDeepOnDark = Color(0xFFFF5A6E); // on night surfaces
+
+  /// The error red for [brightness]. Always pair with [onErrorFor].
+  static Color errorFor(Brightness brightness) =>
+      brightness == Brightness.dark ? brandDeepOnDark : brandDeep;
+
+  /// Text and icon colour that sits on top of [errorFor].
+  static Color onErrorFor(Brightness brightness) =>
+      brightness == Brightness.dark ? textPrimaryLight : cream;
 
   // Status layer. Only happeningNow is wired today; the rest are RESERVED for
   // future features (keep them from being reassigned to something else).

@@ -54,8 +54,8 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 
 | Token | Hex | Usage |
 |---|---|---|
-| Signal Red | `#FF1744` | seed: CTAs, FABs, selected states |
-| Deep Red | `#D5002B` | errors + destructive — ALWAYS with icon+text (red-brand discipline) |
+| Signal Red | `#FF1744` dark / `#C8102E` light | CTAs, FABs, selected states — always via `AppPalette.brandFor()` |
+| Deep Red | `#D5002B` light / `#FF5A6E` dark | errors + destructive — ALWAYS with icon+text; via `errorFor()` + `onErrorFor()` |
 
 **Layer 2 — Status:**
 

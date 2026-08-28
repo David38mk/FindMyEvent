@@ -43,20 +43,25 @@ class FindMyEventApp extends ConsumerWidget {
 
   static ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
+    // One identity, two shades: neon on night surfaces, poster crimson on
+    // light ones (ADR 0005 amendment). Resolved once here so no widget has to
+    // know which theme it is in.
+    final brand = AppPalette.brandFor(brightness);
     var scheme = ColorScheme.fromSeed(
-      seedColor: AppPalette.brand,
+      seedColor: brand,
       brightness: brightness,
     ).copyWith(
       // fromSeed desaturates the seed into tonal "container" variants (muddy
       // brick in dark mode) — force TRUE Signal Red on every role that means
       // "selected/action" (ADR 0005: brand = vivid, chrome-only).
-      primary: AppPalette.brand,
+      primary: brand,
       onPrimary: Colors.white,
-      primaryContainer: AppPalette.brand,
+      primaryContainer: brand,
       onPrimaryContainer: Colors.white,
-      secondaryContainer: AppPalette.brand,
+      secondaryContainer: brand,
       onSecondaryContainer: Colors.white,
-      error: AppPalette.brandDeep,
+      error: AppPalette.errorFor(brightness),
+      onError: AppPalette.onErrorFor(brightness),
       onSurface:
           dark ? AppPalette.textPrimaryDark : AppPalette.textPrimaryLight,
       onSurfaceVariant:

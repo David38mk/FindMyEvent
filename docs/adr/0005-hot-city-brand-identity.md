@@ -83,3 +83,35 @@ for body text, so error text is safe at any size.
 
 `#FF3B30` was also Apple's system red; the app ships Android-first, so that
 association was never load-bearing either way.
+
+## Amendment 2 — 2026-08-28: the brand red is a pair, not a value
+
+Status: accepted. Reference: the *Sift Heads: Cartels* key art (red / black /
+white / grey), which David named as the target.
+
+That reference puts its red **on white**. Ours sits on near-black. The same hex
+cannot be optimal for both grounds: a neon red reads as a light source against
+Void and turns garish on white, while a poster crimson does exactly the reverse
+and goes muddy on black (`#C8102E` on Void is 3.4:1 — large text only).
+
+So the brand resolves per theme:
+
+| Role | Light theme | Dark theme |
+| --- | --- | --- |
+| `brandFor()` | `#C8102E` poster crimson | `#FF1744` neon |
+| `errorFor()` | `#D5002B` | `#FF5A6E` |
+| `onErrorFor()` | Cream | Bitumen `#1C1917` |
+
+This does **not** reopen the "colors must be absolute" rule from 08-21. That
+rule was aimed at Material's seed algorithm inventing tonal variants nobody
+chose. Every value above is chosen, named, and pinned; the theme picks between
+two known constants rather than deriving an unknown one.
+
+Error red became a pair for a second, measured reason: `colorScheme.error` is
+used as inline **text** (`AppErrorText`) as well as a snackbar fill, and
+`#D5002B` on Asphalt is 3.3:1 — below AA. Dark theme now takes the light shade
+with near-black on top, which is Material's own convention for dark error
+roles. The icon+text guardrail is unaffected and still mandatory.
+
+Category colours (Layer 3) are untouched — they are DB-owned and identical in
+both themes by design.
