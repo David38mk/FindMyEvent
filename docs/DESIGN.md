@@ -88,3 +88,52 @@ Decisions from the UI grill session 2026-08-21. Complements PLAN.md (product) an
 - Custom brand-tinted map style (pre-launch)
 - Logo/wordmark + final name
 - `last_entry_at` field idea (RA's "last entry" deadline — more useful than end time for partygoers; consider in Phase 2 organizer form)
+
+## App shape (decided 2026-08-28)
+
+- **The map is the whole app.** No bottom tab bar: controls float over the map, the event list is the draggable sheet, account is a button. Matches the map-first positioning in PLAN.md §7.
+- Findzzer's five-tab shell (Events / Booking / Map / Chat / Profile) is deliberately NOT copied — they have booking and chat to fill it; ours would be a navigation frame around one real screen, with an empty "Saved" tab reading as an unfinished app.
+- **Revisit when tabs are earned:** once Phase 4 lands saved events, notifications and a real profile, a tab bar becomes justified. Cheap to add then.
+
+## Pin system v2 — card pins (decided 2026-08-28, supersedes the pin shape above)
+
+Inspired by Findzzer's poster pins, adapted to our data reality: **no event in the database has an image today** (the kadevecer scraper never reads the `<img>`, sample events have none, and organizer uploads — the only source of posters — number zero).
+
+- **Event pins become small rounded cards, always.** Real poster when `image_url` exists; otherwise generated artwork from the category colour + glyph. Consistent shape now, silently upgrades as real posters arrive — no half-empty-poster map.
+- **Places stay small slate pins**, unchanged. This sharpens the rule already locked: events are loud, places are furniture.
+- **A cluster renders as a stack of cards** (Findzzer's look), not a numbered bubble.
+- Card pins are roughly 3× a teardrop's footprint, so **cluster radius must be re-tuned upward** — Debar Maalo on a Saturday is the stress case.
+- **Backend prerequisite:** teach the kadevecer scraper to capture poster images, or card pins stay permanently on fallback artwork.
+
+## Basemap v2 (decided 2026-08-28, supersedes the dataviz choice above)
+
+- **MapTiler `basic-v2` / `basic-v2-dark`** — major landmarks and street names return, far calmer than `streets-v2`. Rationale: `dataviz` was clean but anonymous; people in Skopje navigate by landmark ("the place next to Tinex"), which Findzzer gets from Apple Maps' POI layer and we had thrown away.
+- **Custom MapTiler style stays the real answer** (dataviz base + major POIs re-enabled in muted grey) — still the pre-launch polish item, now with a concrete brief.
+- Verify against real card pins on device before finalising: this is a look-at-it decision, not an argue-about-it one.
+
+## Map chrome layout (decided 2026-08-28, supersedes the filter-button placement above)
+
+The 08-21 layout put night chips + filter button + theme button in one top row; on a real phone the chips were already clipped, and Phase 2's account button would have made four controls fight for one row.
+
+- **Top row: night chips only**, full width — no more clipping.
+- **Top-right: account avatar** (Findzzer's placement; identity belongs there). `AccountButton` from Phase 2.
+- **Bottom-centre: a floating "Filters · n" pill** above the sheet — thumb-reachable, and the active-filter count stays visible without opening anything. Panel contents unchanged (still doubles as the legend, still first-tap-isolates).
+- **Theme switcher stops being map chrome** and moves inside the account sheet, where a rarely-touched setting belongs. One fewer button on the map.
+- Right edge keeps the zoom / my-location stack.
+
+## Detail sheet (decided 2026-08-28)
+
+Tapping a pin opens an **expandable, scrollable sheet**: opens at ~55% with poster, title, time, venue and the action row (Directions, later Call); drag to full screen for description and all reviews. Same drag language as the event-list sheet, so the gesture is taught once and the map stays in context while browsing.
+
+- Fixes a real bug: the 08-21 sheet is a non-scrollable `Padding`+`Column`, so `PlaceReviewsSection` would overflow off-screen.
+- Hosts the Phase 2 widgets: `EventImage` as the header, `PlaceReviewsSection` at the bottom (places, and events held at a Place via `MapPin.placeId`).
+- Full-screen push routes (Posh/DICE/RA pattern) rejected: they trade away map context for a bigger poster, and add a navigation concept the app doesn't otherwise need.
+
+## Empty state & sheet peek (decided 2026-08-28)
+
+With 3 sample events, a scraper resolving 0, and no organizers yet, **an empty night is the normal case, not an edge case** — the empty state is effectively the main screen today.
+
+- **Peek shows a real teaser**, not a bare count: `6 tonight · next 21:00 Techno Night`.
+- **Never dead-end.** An empty night shows "Nothing listed tonight" plus a one-tap jump to the next night that actually has events ("Saturday has 4 →"). Needs a small backend query for "which upcoming nights have events".
+- **The vices layer is the empty-state filler**: no party tonight still means bars, night shops and hookah places are open nearby. Our sparsest moment becomes the thing no competitor can answer.
+- A swipeable card carousel in the peek was rejected for now: with zero events an empty carousel looks more broken than a sentence. Reconsider once event density is real.
