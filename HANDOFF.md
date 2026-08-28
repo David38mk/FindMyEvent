@@ -27,6 +27,13 @@ The repo must always describe the live database. Drift happened once (2026-08-28
 
 **Row missing `remote`:** the file exists in the repo but isn't deployed — someone runs `npx supabase db push`.
 
+## Local build gotchas (Windows)
+
+- **`Unable to delete directory ... mergeDebugAssets` / `kernel_blob.bin`** — not a code error. A Gradle daemon left over from a killed `flutter run` still holds a handle on the old build output, and Windows won't let the next build delete it. Fix: `cd app/android && ./gradlew --stop`, then `rm -rf app/build`, then run again. Happens whenever a run is Ctrl-C'd or the emulator dies mid-session.
+- **Flutter commands hang with no output** — orphaned `dart.exe` / `dartvm.exe` holding the Flutter startup lock. Kill them and retry.
+- **Always run Flutter from `app/`**, not the repo root.
+- **Emulator needs ~2 GB free RAM.** With Chrome + VS Code open it can silently fail to boot or crash mid-run.
+
 ## Entry template
 
 ```
