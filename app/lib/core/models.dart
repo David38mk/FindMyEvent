@@ -17,6 +17,8 @@ class MapPin {
     this.startsAt,
     this.endsAt,
     this.eventNight,
+    this.imageUrl,
+    this.placeId,
   });
 
   final String id;
@@ -38,6 +40,15 @@ class MapPin {
 
   /// The Event Night this event belongs to (ADR 0004); null for places.
   final DateTime? eventNight;
+
+  /// Public Storage URL of the organizer-uploaded photo (events only, often
+  /// null — scraped events rarely have one). Render with core/event_image.dart.
+  final String? imageUrl;
+
+  /// For an event held at a Place, that Place's id — lets an event sheet show
+  /// the venue's Reviews. Null for ad-hoc coordinates and for place pins
+  /// (a place pin's own id IS the place id).
+  final String? placeId;
 
   /// Started but not yet expired (ADR 0004: end time, or 06:00 the morning
   /// after the Event Night when no end is set).
@@ -65,6 +76,8 @@ class MapPin {
         startsAt: DateTime.tryParse(row['starts_at'] as String? ?? '')?.toLocal(),
         endsAt: DateTime.tryParse(row['ends_at'] as String? ?? '')?.toLocal(),
         eventNight: DateTime.tryParse(row['event_night'] as String? ?? ''),
+        imageUrl: row['image_url'] as String?,
+        placeId: row['place_id'] as String?,
       );
 
   factory MapPin.place(Map<String, dynamic> row) => MapPin(

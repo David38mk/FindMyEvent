@@ -27,6 +27,19 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Phase 2 auth deep link. Supabase password-recovery (and any
+                 future email-confirm) links redirect here; supabase_flutter
+                 catches the URL and emits AuthChangeEvent.passwordRecovery.
+                 The same URI must be added to Supabase → Authentication →
+                 URL Configuration → Redirect URLs, or the link bounces to the
+                 Site URL in a browser instead of opening the app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.findmyevent.findmyevent"
+                      android:host="login-callback"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

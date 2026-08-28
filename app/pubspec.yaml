@@ -47,6 +47,8 @@ dependencies:
   flutter_cache_manager: ^3.4.2
   url_launcher: ^6.3.2
   google_fonts: ^8.2.1
+  google_sign_in: ^7.2.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
