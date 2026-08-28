@@ -145,5 +145,7 @@
   "reviewReportTitle": "Пријави ја оваа рецензија",
   "reviewReportReason": "Што не е во ред со неа? (по избор)",
   "reviewReportSend": "Испрати пријава",
-  "reviewReportSent": "Пријавата е испратена — благодариме."
+  "reviewReportSent": "Пријавата е испратена — благодариме.",
+  "emptyNightPlaces": "{count, plural, =1{Сепак 1 отворено место во близина} other{Сепак {count} отворени места во близина}}",
+  "emptyNightJump": "{weekday} има {count} →"
 }

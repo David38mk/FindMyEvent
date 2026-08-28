@@ -154,5 +154,13 @@
   "reviewReportTitle": "Report this review",
   "reviewReportReason": "What's wrong with it? (optional)",
   "reviewReportSend": "Send report",
-  "reviewReportSent": "Report sent — thanks."
+  "reviewReportSent": "Report sent — thanks.",
+  "emptyNightPlaces": "{count, plural, =1{Still 1 place open nearby} other{Still {count} places open nearby}}",
+  "emptyNightJump": "{weekday} has {count} →",
+  "@emptyNightPlaces": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "@emptyNightJump": {
+    "placeholders": { "weekday": { "type": "String" }, "count": { "type": "int" } }
+  }
 }

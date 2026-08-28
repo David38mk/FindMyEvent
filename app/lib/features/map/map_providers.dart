@@ -90,3 +90,27 @@ final mapPinsProvider = FutureProvider<List<MapPin>>((ref) async {
     for (final row in results[1] as List) MapPin.place(row as Map<String, dynamic>),
   ];
 });
+
+/// Nights ahead that actually have events, for the never-dead-end empty state
+/// (docs/DESIGN.md § Empty state): "Nothing tonight — Saturday has 4 →".
+final upcomingNightsProvider =
+    FutureProvider<List<({DateTime night, int count})>>((ref) async {
+  if (!Env.hasSupabase) return const [];
+  // Re-runs when the map data does, so a newly approved event shows up here
+  // on the same 5-minute refresh as the pins.
+  ref.watch(mapPinsProvider);
+  final rows = await Supabase.instance.client.rpc(
+    'upcoming_event_nights',
+    params: {
+      'from_night': currentEventNight().toIso8601String().split('T').first,
+      'max_nights': 14,
+    },
+  ) as List;
+  return [
+    for (final row in rows.cast<Map<String, dynamic>>())
+      (
+        night: DateTime.parse(row['event_night'] as String),
+        count: (row['event_count'] as num).toInt(),
+      ),
+  ];
+});

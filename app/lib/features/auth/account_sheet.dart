@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/env.dart';
 import '../../core/error_text.dart';
 import '../../l10n/app_localizations.dart';
 import '../organizer/add_event_screen.dart';
 import '../organizer/my_submissions_screen.dart';
+import '../settings/theme_mode_tiles.dart';
 import 'auth_errors.dart';
+import 'auth_screen.dart';
 import 'auth_providers.dart';
 
 /// The signed-in menu: who you are, what your role lets you do, and the way
@@ -31,7 +34,33 @@ class _AccountSheet extends ConsumerWidget {
     final profile = profileAsync.valueOrNull;
     final requestStatus = ref.watch(organizerRequestProvider).valueOrNull;
 
-    if (user == null) return const SizedBox.shrink();
+    // Signed out: the sheet is still useful — it offers sign-in and carries
+    // the theme setting, which anonymous browsers must be able to reach.
+    if (user == null) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: Text(l10n.authSignIn),
+              enabled: Env.hasSupabase,
+              onTap: () {
+                final navigator = Navigator.of(context, rootNavigator: true);
+                Navigator.of(context).pop();
+                navigator.push(
+                  MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
+                );
+              },
+            ),
+            const Divider(height: 1),
+            const ThemeModeTiles(),
+            const SizedBox(height: 12),
+          ],
+        ),
+      );
+    }
 
     return SafeArea(
       child: Padding(
@@ -65,6 +94,10 @@ class _AccountSheet extends ConsumerWidget {
               ),
             ] else
               _OrganizerRequestTile(status: requestStatus),
+            const Divider(height: 1),
+            // Theme lives here rather than on the map: a rarely-touched
+            // setting shouldn't spend map chrome (docs/DESIGN.md § Map chrome).
+            const ThemeModeTiles(),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout),

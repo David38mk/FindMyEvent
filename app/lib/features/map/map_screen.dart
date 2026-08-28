@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,11 +9,16 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../core/env.dart';
+import '../../core/event_image.dart';
+import '../../core/map_tiles.dart';
 import '../../core/models.dart';
 import '../../core/palette.dart';
-import '../../core/theme_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../auth/account_button.dart';
+import '../reviews/place_reviews_section.dart';
 import 'cached_tile_provider.dart';
 import 'map_providers.dart';
 
@@ -43,13 +49,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _expiryTimer?.cancel();
     super.dispose();
   }
-
-  /// dataviz styles (docs/DESIGN.md): near-monochrome basemap so pins and the
-  /// amber brand are the only loud things on screen; variant follows theme.
-  String _tileUrl(Brightness brightness) => Env.hasMapTiler
-      ? 'https://api.maptiler.com/maps/${brightness == Brightness.dark ? 'dataviz-dark' : 'dataviz'}/{z}/{x}/{y}.png?key=${Env.maptilerKey}'
-      // OSM demo tiles: dev fallback only, never production (ADR 0001).
-      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   void _updateBounds() {
     ref.read(mapBoundsProvider.notifier).state =
@@ -124,40 +123,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: _tileUrl(Theme.of(context).brightness),
+                urlTemplate: mapTileUrl(Theme.of(context).brightness),
                 userAgentPackageName: 'com.findmyevent.findmyevent',
                 tileProvider: CachedTileProvider(),
               ),
               MarkerLayer(
                 markers: [
                   for (final cluster in clusters)
-                    Marker(
-                      point: cluster.center,
-                      width: cluster.pins.length > 1 ? 48 : 44,
-                      height: cluster.pins.length > 1 ? 48 : 44,
-                      // Single pins anchor their TIP at the coordinate
-                      // (topCenter = widget sits above the point); cluster
-                      // bubbles stay centered — they mark an area, not a spot.
-                      alignment: cluster.pins.length == 1
-                          ? Alignment.topCenter
-                          : Alignment.center,
-                      child: cluster.pins.length == 1
-                          ? _PinMarker(
-                              pin: cluster.pins.single,
-                              glyph: cluster.pins.single.kind == PinKind.place
-                                  ? iconForName(categoryIndex[
-                                          cluster.pins.single.categorySlug]
-                                      ?.icon)
-                                  : null,
-                              live: cluster.pins.single
-                                  .isLiveAt(DateTime.now()),
-                              onTap: () => _showPinSheet(cluster.pins.single),
-                            )
-                          : _ClusterMarker(
-                              cluster: cluster,
-                              onTap: () => _showClusterSheet(cluster),
-                            ),
-                    ),
+                    _markerFor(cluster, categoryIndex),
                 ],
               ),
               SimpleAttributionWidget(
@@ -169,6 +142,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ],
           ),
+          // Top row is night chips + identity only (docs/DESIGN.md § Map
+          // chrome): filters moved to a bottom pill, theme into the account
+          // sheet — four controls fighting for one row was the old layout's
+          // problem, and the chips were being clipped.
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -177,12 +154,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Expanded(child: _NightChips()),
-                      const SizedBox(width: 8),
-                      _FilterButton(l10n: l10n),
-                      const SizedBox(width: 8),
-                      const _SettingsButton(),
+                    children: const [
+                      Expanded(child: _NightChips()),
+                      SizedBox(width: 8),
+                      AccountButton(),
                     ],
                   ),
                 ),
@@ -203,6 +178,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               _mapController.move(LatLng(pin.lat, pin.lng), 16);
               _showPinSheet(pin);
             },
+          ),
+          // Sits just above the sheet's peek detent (0.10 of the screen).
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.sizeOf(context).height * 0.10 + 12,
+              ),
+              child: _FilterPill(l10n: l10n),
+            ),
           ),
         ],
       ),
@@ -235,59 +220,68 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  /// One marker per cluster: events render as cards (poster or generated
+  /// artwork), places keep the slate teardrop, a multi-pin cluster becomes a
+  /// stack of cards (docs/DESIGN.md § Pin system v2).
+  Marker _markerFor(_PinCluster cluster, Map<String, MapCategory> categories) {
+    IconData glyphFor(MapPin pin) =>
+        iconForName(categories[pin.categorySlug]?.icon);
+
+    if (cluster.pins.length > 1) {
+      return Marker(
+        point: cluster.center,
+        width: 76,
+        height: 76,
+        // A cluster marks an area, not a spot, so it stays centred.
+        child: _ClusterMarker(
+          cluster: cluster,
+          glyphFor: glyphFor,
+          onTap: () => _showClusterSheet(cluster),
+        ),
+      );
+    }
+
+    final pin = cluster.pins.single;
+    final isEvent = pin.kind == PinKind.event;
+    return Marker(
+      point: cluster.center,
+      width: isEvent ? 60 : 44,
+      height: isEvent ? 68 : 44,
+      // topCenter puts the whole widget ABOVE the point (flutter_map's own
+      // wording), so a pin's tip — or a card's tail — lands on the coordinate.
+      alignment: Alignment.topCenter,
+      child: isEvent
+          ? _EventCardPin(
+              pin: pin,
+              glyph: glyphFor(pin),
+              live: pin.isLiveAt(DateTime.now()),
+              onTap: () => _showPinSheet(pin),
+            )
+          : _PinMarker(
+              pin: pin,
+              glyph: glyphFor(pin),
+              live: false,
+              onTap: () => _showPinSheet(pin),
+            ),
+    );
+  }
+
+  /// Expandable, scrollable detail sheet (docs/DESIGN.md § Detail sheet):
+  /// opens at 55% with the essentials, drags to full screen for description
+  /// and reviews. Must stay scrollable — PlaceReviewsSection is unbounded.
   void _showPinSheet(MapPin pin) {
-    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.circle, color: pin.color, size: 14),
-                const SizedBox(width: 8),
-                Text(
-                  categoryLabel(l10n, pin.categorySlug),
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(pin.title, style: Theme.of(context).textTheme.headlineSmall),
-            if (pin.subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(pin.subtitle!),
-            ],
-            if (pin.startsAt != null) ...[
-              const SizedBox(height: 4),
-              Text(_eventTimeText(l10n, pin)),
-            ],
-            if (pin.description != null && pin.description!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(pin.description!),
-            ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.directions),
-                label: Text(l10n.directions),
-                // Universal maps URL: Android/iOS hand it to the installed
-                // maps app; falls back to browser everywhere else.
-                onPressed: () => launchUrl(
-                  Uri.parse(
-                    'https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}',
-                  ),
-                  mode: LaunchMode.externalApplication,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.55,
+        minChildSize: 0.3,
+        maxChildSize: 0.95,
+        snap: true,
+        snapSizes: const [0.55],
+        builder: (context, controller) =>
+            _PinDetail(pin: pin, controller: controller),
       ),
     );
   }
@@ -389,71 +383,32 @@ class _NightChips extends ConsumerWidget {
   }
 }
 
-/// Theme override (docs/DESIGN.md): Auto / Light / Dark, persisted locally.
-class _SettingsButton extends ConsumerWidget {
-  const _SettingsButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: IconButton(
-        tooltip: l10n.settings,
-        icon: const Icon(Icons.brightness_6_outlined),
-        onPressed: () => showModalBottomSheet<void>(
-          context: context,
-          builder: (context) => SafeArea(
-            child: Consumer(builder: (context, ref, _) {
-              final mode = ref.watch(themeModeProvider);
-              return RadioGroup<ThemeMode>(
-                groupValue: mode,
-                onChanged: (m) =>
-                    ref.read(themeModeProvider.notifier).set(m!),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RadioListTile<ThemeMode>(
-                      title: Text(l10n.themeAuto),
-                      value: ThemeMode.system,
-                    ),
-                    RadioListTile<ThemeMode>(
-                      title: Text(l10n.themeLight),
-                      value: ThemeMode.light,
-                    ),
-                    RadioListTile<ThemeMode>(
-                      title: Text(l10n.themeDark),
-                      value: ThemeMode.dark,
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// 3-detent draggable list of the selected nights' events over the map
 /// (docs/DESIGN.md: Google-Maps pattern; map/list toggle rejected).
-class _EventListSheet extends StatelessWidget {
+class _EventListSheet extends ConsumerWidget {
   const _EventListSheet({required this.pins, required this.onPinTap});
 
   final List<MapPin> pins;
   final ValueChanged<MapPin> onPinTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final events = pins.where((p) => p.kind == PinKind.event).toList()
       ..sort((a, b) => (a.startsAt ?? DateTime(2100))
           .compareTo(b.startsAt ?? DateTime(2100)));
+    final placeCount = pins.length - events.length;
     final now = DateTime.now();
     final df = DateFormat('EEE d', l10n.localeName);
     final multiNight =
         events.map((e) => e.eventNight).whereType<DateTime>().toSet().length > 1;
+
+    // Peek teaser: the count alone wasted the one line users always see.
+    final next = events.where((e) => e.startsAt != null).firstOrNull;
+    final headline = events.isEmpty
+        ? l10n.noEventsNight
+        : '${events.length} ${l10n.eventsLabel}'
+            '${next != null ? ' · ${DateFormat.Hm().format(next.startsAt!)} ${next.title}' : ''}';
 
     return DraggableScrollableSheet(
       initialChildSize: 0.10,
@@ -488,15 +443,14 @@ class _EventListSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                '${events.length} ${l10n.eventsLabel}',
+                headline,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
             if (events.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(l10n.noEventsNight),
-              ),
+              _EmptyNight(placeCount: placeCount),
             for (final event in events)
               ListTile(
                 leading: Icon(Icons.location_pin, color: event.color),
@@ -527,26 +481,93 @@ class _EventListSheet extends StatelessWidget {
 /// Filter button + expandable panel (docs/DESIGN.md filter & legend UX):
 /// the panel doubles as the legend — every category shown with its color
 /// dot (events) or glyph (places). Badge = active filter count.
-class _FilterButton extends ConsumerWidget {
-  const _FilterButton({required this.l10n});
+/// A quiet night must never dead-end (docs/DESIGN.md § Empty state): offer the
+/// next night that actually has something, and point at the places that are
+/// open regardless — the vice layer is what nobody else can fall back on.
+class _EmptyNight extends ConsumerWidget {
+  const _EmptyNight({required this.placeCount});
+
+  final int placeCount;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final selected = ref.watch(selectedNightsProvider);
+    final nights = ref.watch(upcomingNightsProvider).valueOrNull ?? const [];
+    // The first night with events that isn't the one already being shown.
+    final suggestion =
+        nights.where((n) => n.night.isAfter(selected.to)).firstOrNull;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (placeCount > 0)
+            Text(
+              l10n.emptyNightPlaces(placeCount),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          if (suggestion != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.east),
+              label: Text(l10n.emptyNightJump(
+                DateFormat('EEEE', l10n.localeName).format(suggestion.night),
+                suggestion.count,
+              )),
+              onPressed: () => ref.read(selectedNightsProvider.notifier).state =
+                  NightRange(suggestion.night, suggestion.night),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Floating pill above the sheet (docs/DESIGN.md § Map chrome layout):
+/// thumb-reachable, and the active count stays readable without opening it.
+class _FilterPill extends ConsumerWidget {
+  const _FilterPill({required this.l10n});
 
   final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedCategoriesProvider);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: IconButton(
-        tooltip: l10n.filters,
-        icon: Badge(
-          isLabelVisible: selected.isNotEmpty,
-          label: Text('${selected.length}'),
-          child: const Icon(Icons.filter_list),
-        ),
-        onPressed: () => showModalBottomSheet<void>(
+    final filtering = selected.isNotEmpty;
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: filtering ? scheme.primary : Theme.of(context).cardTheme.color,
+      shape: const StadiumBorder(),
+      elevation: 6,
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () => showModalBottomSheet<void>(
           context: context,
           builder: (context) => const SafeArea(child: _FilterPanel()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.tune,
+                  size: 18,
+                  color: filtering ? scheme.onPrimary : scheme.onSurface),
+              const SizedBox(width: 8),
+              Text(
+                filtering ? '${l10n.filters} · ${selected.length}' : l10n.filters,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: filtering ? scheme.onPrimary : scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -698,10 +719,21 @@ class _PinMarker extends StatelessWidget {
   }
 }
 
-class _ClusterMarker extends StatelessWidget {
-  const _ClusterMarker({required this.cluster, required this.onTap});
+/// Event marker as a card (docs/DESIGN.md § Pin system v2): the poster when
+/// there is one, generated artwork from the category otherwise — so the map
+/// reads the same whether or not organizers have uploaded anything yet.
+/// A live event trades its white frame for Solar Yellow.
+class _EventCardPin extends StatelessWidget {
+  const _EventCardPin({
+    required this.pin,
+    required this.glyph,
+    required this.live,
+    required this.onTap,
+  });
 
-  final _PinCluster cluster;
+  final MapPin pin;
+  final IconData glyph;
+  final bool live;
   final VoidCallback onTap;
 
   @override
@@ -709,26 +741,264 @@ class _ClusterMarker extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(
-        // Hover (web/desktop) previews what's inside; tap (all platforms,
-        // including mobile where hover doesn't exist) opens the full list.
+        message: _PinMarker._tooltipText(pin),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _EventCard(pin: pin, glyph: glyph, live: live, size: 52),
+            // Tail: the card floats, this is what actually points at the spot.
+            CustomPaint(
+              size: const Size(12, 8),
+              painter: _TailPainter(
+                live ? AppPalette.happeningNow : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The card itself, reused by single pins and by cluster stacks.
+class _EventCard extends StatelessWidget {
+  const _EventCard({
+    required this.pin,
+    required this.glyph,
+    required this.live,
+    required this.size,
+  });
+
+  final MapPin pin;
+  final IconData glyph;
+  final bool live;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = pin.imageUrl;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: pin.color,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: live ? AppPalette.happeningNow : Colors.white,
+          width: 2.5,
+        ),
+        boxShadow: const [BoxShadow(blurRadius: 5, color: Colors.black54)],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: image != null && image.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: image,
+              fit: BoxFit.cover,
+              // Fallback artwork also covers a broken/slow poster, so a card
+              // is never an empty rectangle on the map.
+              placeholder: (_, _) => _fallback(),
+              errorWidget: (_, _, _) => _fallback(),
+            )
+          : _fallback(),
+    );
+  }
+
+  Widget _fallback() => ColoredBox(
+        color: pin.color,
+        child: Center(
+          child: Icon(glyph, size: size * 0.45, color: Colors.white),
+        ),
+      );
+}
+
+class _TailPainter extends CustomPainter {
+  const _TailPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawShadow(path, Colors.black54, 2, false);
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_TailPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// A cluster renders as a stack of cards (Findzzer's look) rather than a
+/// numbered bubble — it reads as "a scene here", not "a number here".
+class _ClusterMarker extends StatelessWidget {
+  const _ClusterMarker({
+    required this.cluster,
+    required this.glyphFor,
+    required this.onTap,
+  });
+
+  final _PinCluster cluster;
+  final IconData Function(MapPin) glyphFor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Events first: they are what the stack is advertising.
+    final ordered = [...cluster.pins]..sort((a, b) =>
+        (a.kind == PinKind.event ? 0 : 1) - (b.kind == PinKind.event ? 0 : 1));
+    final top = ordered.take(3).toList();
+    final now = DateTime.now();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Tooltip(
         message: cluster.pins.map((p) => p.title).join(', '),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black45)],
-          ),
+        child: Stack(
+          clipBehavior: Clip.none,
           alignment: Alignment.center,
-          child: Text(
-            '${cluster.pins.length}',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onPrimary,
-              fontWeight: FontWeight.bold,
+          children: [
+            for (var i = top.length - 1; i >= 0; i--)
+              Transform.translate(
+                offset: Offset(i * 6.0 - 6, i * -5.0 + 5),
+                child: Transform.rotate(
+                  angle: (i - 1) * 0.11,
+                  child: _EventCard(
+                    pin: top[i],
+                    glyph: glyphFor(top[i]),
+                    live: top[i].isLiveAt(now),
+                    size: 46,
+                  ),
+                ),
+              ),
+            Positioned(
+              right: 0,
+              bottom: 2,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: Text(
+                  '${cluster.pins.length}',
+                  style: TextStyle(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Contents of the expandable detail sheet (docs/DESIGN.md § Detail sheet).
+class _PinDetail extends StatelessWidget {
+  const _PinDetail({required this.pin, required this.controller});
+
+  final MapPin pin;
+  final ScrollController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    // An event held at a Place shows that venue's reviews; a place pin's own
+    // id IS the place id.
+    final reviewablePlaceId =
+        pin.kind == PinKind.place ? pin.id : pin.placeId;
+
+    return ListView(
+      controller: controller,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
         ),
-      ),
+        if (pin.kind == PinKind.event) ...[
+          EventImage(url: pin.imageUrl),
+          if (pin.imageUrl != null && pin.imageUrl!.isNotEmpty)
+            const SizedBox(height: 16),
+        ],
+        Row(
+          children: [
+            Icon(Icons.circle, color: pin.color, size: 14),
+            const SizedBox(width: 8),
+            Text(
+              categoryLabel(l10n, pin.categorySlug),
+              style: theme.textTheme.labelLarge,
+            ),
+            if (pin.isLiveAt(DateTime.now())) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppPalette.happeningNow,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  l10n.happeningNow,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: Colors.black87, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(pin.title, style: theme.textTheme.headlineSmall),
+        if (pin.subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(pin.subtitle!, style: theme.textTheme.bodyMedium),
+        ],
+        if (pin.startsAt != null) ...[
+          const SizedBox(height: 4),
+          Text(_eventTimeText(l10n, pin), style: theme.textTheme.bodyMedium),
+        ],
+        if (pin.description != null && pin.description!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(pin.description!),
+        ],
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            icon: const Icon(Icons.directions),
+            label: Text(l10n.directions),
+            // Universal maps URL: Android/iOS hand it to the installed maps
+            // app; falls back to the browser everywhere else.
+            onPressed: () => launchUrl(
+              Uri.parse(
+                'https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}',
+              ),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+        ),
+        if (reviewablePlaceId != null) ...[
+          const SizedBox(height: 8),
+          PlaceReviewsSection(placeId: reviewablePlaceId),
+        ],
+      ],
     );
   }
 }

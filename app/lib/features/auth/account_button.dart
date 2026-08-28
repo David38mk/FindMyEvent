@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/env.dart';
 import '../../l10n/app_localizations.dart';
 import 'account_sheet.dart';
 import 'auth_providers.dart';
@@ -46,17 +45,10 @@ class _AccountButtonState extends ConsumerState<AccountButton> {
       child: IconButton(
         tooltip: signedIn ? l10n.authAccount : l10n.authSignIn,
         icon: Icon(signedIn ? Icons.person : Icons.person_outline),
-        onPressed: !Env.hasSupabase
-            ? null
-            : () {
-                if (signedIn) {
-                  showAccountSheet(context);
-                } else {
-                  Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute<void>(builder: (_) => const AuthScreen()),
-                  );
-                }
-              },
+        // Signed out still opens the sheet, not the auth screen: browsing is
+        // anonymous by design, and the sheet is where the theme setting lives
+        // now (docs/DESIGN.md § Map chrome) — sign-in is one tap inside it.
+        onPressed: () => showAccountSheet(context),
       ),
     );
   }
